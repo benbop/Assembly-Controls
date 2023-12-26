@@ -1,2 +1,5 @@
 # Assembly-Controls
-To-End-Of-Year
+## Currently:
+Can control a sqaure
+## ToDo:
+find meaning to this lmfao

@@ -34,17 +34,18 @@ PROC moves
     INT 16h
 
     ; Check if AH contains 'W' (ASCII value 87)
-    CMP AL, 87
-    call w_pressed
+    CMP AL, 'w'
+	je w_pressed
+    
     ; Check if AH contains 'S' (ASCII value 83)
-    CMP AL, 83
-    call s_pressed
+    CMP AL, 's'
+    je s_pressed
     ; Check if AH contains 'D' (ASCII value 68)
-    CMP AL, 68
-    call d_pressed
+    CMP AL, 'd'
+    je d_pressed
     ; Check if AH contains 'A' (ASCII value 65)
-    CMP AL, 65
-    call a_pressed
+    CMP AL, 'a'
+    je a_pressed
     ; Check if AH contains '1B' (Escape key)
     CMP AL, 27h
     JE exit_moves
@@ -53,8 +54,10 @@ exit_moves:
     RET
 
 ENDP moves
+
 PROC w_pressed
-    SUB [Y], 1
+    mov [PressFlag], 1
+	SUB [Y], 1
 
     CHECK_TIME1:         ;time checking loop
     MOV AH,2Ch 					 ;get the system time
@@ -65,12 +68,16 @@ PROC w_pressed
     MOV [TIME_AUX],DL 
 
     CALL draw_player
-    JMP w_pressed
+	call moves
+	CMP [PressFlag],1
+    je w_pressed
+    
 	RET
 ENDP w_pressed
-
+d:
 PROC d_pressed
-    ADD [X], 1
+    mov [PressFlag], 2
+	ADD [X], 1
 
     CHECK_TIME2:          ;time checking loop
     MOV AH,2Ch 					 ;get the system time
@@ -81,12 +88,15 @@ PROC d_pressed
     MOV [TIME_AUX],DL 
 
     CALL draw_player
-    JMP d_pressed
+	call moves
+	cmp [PressFlag],2
+    je d_pressed
 	ret
 ENDP d_pressed
-
+a:
 PROC a_pressed
-    SUB [X], 1
+    mov [PressFlag], 3
+	SUB [X], 1
 
     CHECK_TIME3:           ;time checking loop
     MOV AH,2Ch 					 ;get the system time
@@ -97,13 +107,29 @@ PROC a_pressed
     MOV [TIME_AUX],DL 
 
     CALL draw_player
-    JMP a_pressed
+	call moves
+	CMP [PressFlag],3
+    je a_pressed
 	ret
 ENDP a_pressed
 
 PROC s_pressed
     ADD [Y], 1
-    JMP exit_moves
+    mov [PressFlag], 4
+	
+
+    CHECK_TIME4:           ;time checking loop
+    MOV AH,2Ch 					 ;get the system time
+    INT 21h 			 ;is the current time equal to the previous one(TIME_AUX)?
+    CMP DL,[TIME_AUX] 			 ;is the current time equal to the previous one(TIME_AUX)?
+
+    JE CHECK_TIME4
+    MOV [TIME_AUX],DL 
+
+    CALL draw_player
+	call moves
+	CMP [PressFlag],4
+    je s_pressed
 ENDP s_pressed
 
 PROC draw_player
@@ -160,7 +186,23 @@ PROC draw_ground
     
     RET
 ENDP draw_ground
+PROC game_logic
+    CHECK_TIME:                      ;time checking loop
+        MOV AH, 2Ch                  ;get the system time
+        INT 21h                      ;is the current time equal to the previous one(TIME_AUX)?
+        CMP DL, [TIME_AUX]           ;is the current time equal to the previous one(TIME_AUX)?
 
+        JE CHECK_TIME                ;if it is the same, check again
+
+        ; If it reaches this point, it's because the time has passed
+        MOV [TIME_AUX], DL           ;update time
+        CALL moves
+        CALL draw_player
+        CALL CLEAR_SCREEN
+
+        RET
+
+ENDP game_logic
 MOV AX, 13h
 INT 10h ; Set video mode 13h (320x200 pixels, 256 colors)
 
@@ -172,20 +214,7 @@ start:
     INT 10h ; Set video mode 13h (320x200 pixels, 256 colors)
 
     game_loop:
-        CHECK_TIME:                      ;time checking loop
-            MOV AH, 2Ch 					 ;get the system time
-            INT 21h 			 ;is the current time equal to the previous one(TIME_AUX)?
-            CMP DL, [TIME_AUX] 			 ;is the current time equal to the previous one(TIME_AUX)?
-            CALL moves
-            
-            JE CHECK_TIME   		     ;if it is the same, check again
-            
-            ; If it reaches this point, it's because the time has passed
-            MOV [TIME_AUX], DL              ;update time
-            
-            CALL CLEAR_SCREEN
-            CALL draw_player
-    
+    CALL game_logic
     JMP game_loop
 
 exit:

@@ -9,21 +9,13 @@ X dw 100
 Board dw 200
 TIME_AUX DB 0
 PressFlag db 0
+SnakeBody dw 8
+Xapple dw 80
+yapple dw 80
 ; --------------------------
 CODESEG
 	
-PROC CLEAR_SCREEN              ;clear the screen by restarting the video mode
-    MOV AH,00h                   ;set the configuration to video mode
-    MOV AL,13h                   ;choose the video mode
-    INT 10h    					 ;execute the configuration 
-    
-    MOV AH,0Bh 					 ;set the configuration
-    MOV BH,00h 					 ;to the background color
-    MOV BL,00h 					 ;choose black as background color
-    INT 10h    					 ;execute the configuration
-    
-    RET
-ENDP CLEAR_SCREEN
+
 
 PROC moves
     MOV AH, 01h       ; Function 01h - Check for Key Press
@@ -47,8 +39,7 @@ PROC moves
     CMP AL, 'a'
     je a_pressed
     ; Check if AH contains '1B' (Escape key)
-    CMP AL, 27h
-    JE exit_moves
+    
 
 exit_moves:
     RET
@@ -57,7 +48,7 @@ ENDP moves
 
 PROC w_pressed
     mov [PressFlag], 1
-	SUB [Y], 1
+	SUB [Y], 5
 
     CHECK_TIME1:         ;time checking loop
     MOV AH,2Ch 					 ;get the system time
@@ -77,7 +68,7 @@ ENDP w_pressed
 d:
 PROC d_pressed
     mov [PressFlag], 2
-	ADD [X], 1
+	ADD [X], 5
 
     CHECK_TIME2:          ;time checking loop
     MOV AH,2Ch 					 ;get the system time
@@ -96,7 +87,7 @@ ENDP d_pressed
 a:
 PROC a_pressed
     mov [PressFlag], 3
-	SUB [X], 1
+	SUB [X], 5
 
     CHECK_TIME3:           ;time checking loop
     MOV AH,2Ch 					 ;get the system time
@@ -112,9 +103,9 @@ PROC a_pressed
     je a_pressed
 	ret
 ENDP a_pressed
-
-PROC s_pressed
-    ADD [Y], 1
+s:
+ PROC s_pressed
+    ADD [Y], 5
     mov [PressFlag], 4
 	
 
@@ -146,46 +137,45 @@ PROC draw_player
     MOV AL, 2; Color green
     
     draw_row_loop:
+	
         draw_pixel_loop:
+		
             INC CX
             INC DI
             
             INT 10h
-            CMP DI, 16
+            CMP DI, 8
             JNE draw_pixel_loop
             
-            SUB CX, 16
+            SUB CX, 8
             MOV DI, 0
             INC DX
             INC SI
             
-            CMP SI, 2
+            CMP SI, [SnakeBody]
+			
             JNE draw_row_loop
-    
+    call draw_apple
+	
     RET
 ENDP draw_player
 
-PROC draw_ground
-    MOV AX, 13h
-    INT 10h
+PROC draw_apple
+    
     
     MOV AX, 0C07h     ; Function 0Ch, Set Pixel Color
     MOV BH, 0         ; Page number (usually 0 in mode 13h)
     
-    MOV CX, 0       ; X-coordinate
-    MOV DX, 10       ; Y-coordinate
-    MOV SI, 0
-    MOV DI, 0
-    MOV AL, 15; Color white
+    MOV CX, 50       ; X-coordinate
+    MOV DX, 50       ; Y-coordinate
+    MOV SI, [Xapple]
+    MOV DI, [yapple]
+    MOV AL, 2; Color red
+	INT 10h
     
-    loopy:
-        INC CX
-        INT 10h
-        CMP CX, 320
-        JNE loopy
     
     RET
-ENDP draw_ground
+ENDP draw_apple
 PROC game_logic
     CHECK_TIME:                      ;time checking loop
         MOV AH, 2Ch                  ;get the system time
@@ -198,7 +188,8 @@ PROC game_logic
         MOV [TIME_AUX], DL           ;update time
         CALL moves
         CALL draw_player
-        CALL CLEAR_SCREEN
+		
+        
 
         RET
 
@@ -214,6 +205,7 @@ start:
     INT 10h ; Set video mode 13h (320x200 pixels, 256 colors)
 
     game_loop:
+	
     CALL game_logic
     JMP game_loop
 

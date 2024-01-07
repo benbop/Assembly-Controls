@@ -12,6 +12,7 @@ PressFlag db 0
 SnakeBody dw 8
 Xapple dw 80
 yapple dw 80
+Random dw 0
 ; --------------------------
 CODESEG
 	
@@ -155,7 +156,17 @@ PROC draw_player
             CMP SI, [SnakeBody]
 			
             JNE draw_row_loop
+			mov bx , [Xapple]
+			cmp bx, [X]
+			jne draw_apple
+			mov ax , [yapple]
+			cmp ax , [Y]
+			jne draw_apple
+			call rnd
+			mov dx , [Random]
+			mov [Xapple], dx		
     call draw_apple
+			
 	
     RET
 ENDP draw_player
@@ -166,16 +177,21 @@ PROC draw_apple
     MOV AX, 0C07h     ; Function 0Ch, Set Pixel Color
     MOV BH, 0         ; Page number (usually 0 in mode 13h)
     
-    MOV CX, 50       ; X-coordinate
-    MOV DX, 50       ; Y-coordinate
-    MOV SI, [Xapple]
-    MOV DI, [yapple]
+    MOV CX, [Xapple]       ; X-coordinate
+    MOV DX, [yapple]       ; Y-coordinate
     MOV AL, 2; Color red
 	INT 10h
+	
     
     
     RET
 ENDP draw_apple
+		Proc rnd
+			mov ah , 2ch
+			int 21h
+			mov [byte ptr Random] , DL
+			ret
+			ENDP rnd
 PROC game_logic
     CHECK_TIME:                      ;time checking loop
         MOV AH, 2Ch                  ;get the system time

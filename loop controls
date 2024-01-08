@@ -277,8 +277,9 @@ ENDP draw
 	ADD DX , 40 ; settings borders of the screen decided on 90 so game is centerd
     mov [Xapple], dx
 	Inc [Player_Score]
-	call Score
 	call set_cursor
+	call Score
+	
 	call rnd_y ; moves snake to y coords
 	mov dx , [Random_y]
 	ADD DX , 50 ; settings borders of the screen has to be at least 50 so no artifacts!!!

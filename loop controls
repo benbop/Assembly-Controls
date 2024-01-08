@@ -15,6 +15,7 @@ Random_x dw 50 ; my rnds
 Random_y dw 50 ; my rnds
 Speed dw 5 ; speed of snake
 Player_Score DB 48 ; ascii value of 0
+level db 1
 
 
 ; --------------------------
@@ -33,7 +34,7 @@ PROC Score
 	mov bh, 0    ; Page number
 	mov cx, 1    ; Number of times to display character
 	mov al, [Player_Score]  ; Character to display
-    mov bl, 1    ; Attribute (text color)
+    mov bl, [level]    ; Attribute (text color)
     int 10h
     MOV AH, 02h
     MOV BH, 0
@@ -277,8 +278,18 @@ ENDP draw
 	ADD DX , 40 ; settings borders of the screen decided on 90 so game is centerd
     mov [Xapple], dx
 	Inc [Player_Score]
+	cmp [Player_Score], 58
+	jne score_inc
+	
+	
+	inc [level]
+	mov [Player_Score], 49
+	inc [Speed]
+	score_inc:
 	call set_cursor
 	call Score
+	
+	
 	
 	call rnd_y ; moves snake to y coords
 	mov dx , [Random_y]
@@ -303,7 +314,7 @@ ENDP check_collision ; hitbox code
     mov [byte ptr Random_x], dl
 		mov dx,0
 		mov ax , [Random_x]
-		div [Speed] ; divide by speed of snake
+		div [SnakeBody] ; divide by body of snake
 	cmp DX,0
 	
 	JNE checkForFiveX
@@ -322,7 +333,7 @@ checkForFiveY:  ; checks if the rnd_x int is divisible by five
 		
 		mov dx,0
 			mov ax , [Random_y]
-			div [Speed] ; divide by speed of snake
+			div [SnakeBody] ; divide by speed of snake
 			cmp DX,0
 		JNE checkForFiveY
 		

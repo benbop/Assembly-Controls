@@ -14,11 +14,36 @@ yapple dw 80 ; x of apple
 Random_x dw 50 ; my rnds
 Random_y dw 50 ; my rnds
 Speed dw 5 ; speed of snake
-Player_Score db 0
+Player_Score DB 48 ; ascii value of 0
+
+
 ; --------------------------
 CODESEG
 
+proc set_cursor
+MOV AH, 02h
+    MOV BH, 0
+    MOV DH, 1 ; Adjust row for the score display
+    MOV DL, 1 ; Adjust column for the score display
+    INT 10h
+	RET
+	ENDP set_cursor
+PROC Score
+    mov ah, 09h  ; Display character function
+	mov bh, 0    ; Page number
+	mov cx, 1    ; Number of times to display character
+	mov al, [Player_Score]  ; Character to display
+    mov bl, 1    ; Attribute (text color)
+    int 10h
+    MOV AH, 02h
+    MOV BH, 0
+    MOV DH, 1 ; Adjust row for the score display
+    MOV DL, 1 ; Adjust column for the score display
+    INT 10h
+    RET
+ENDP Score
 
+  
 PROC moves
 
     MOV AH, 01h       ; Function 01h - Check for Key Press
@@ -144,12 +169,7 @@ ENDP s_pressed
 
 
 PROC draw
-; HERE ADD COUNTER !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-; HERE ADD COUNTER !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-; HERE ADD COUNTER !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-; HERE ADD COUNTER !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-; HERE ADD COUNTER !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	
+
 
     MOV AX, 0C07h     ; Function 0Ch, Set Pixel Color
     MOV BH, 0         ; Page number (usually 0 in mode 13h)
@@ -256,7 +276,9 @@ ENDP draw
     mov dx, [Random_x]
 	ADD DX , 40 ; settings borders of the screen decided on 90 so game is centerd
     mov [Xapple], dx
-	
+	Inc [Player_Score]
+	call Score
+	call set_cursor
 	call rnd_y ; moves snake to y coords
 	mov dx , [Random_y]
 	ADD DX , 50 ; settings borders of the screen has to be at least 50 so no artifacts!!!
@@ -339,8 +361,11 @@ start:
 	
 	
     game_loop:
+	CALL game_logic
+    CALL draw           ; Draw the game screen
+    
 	 
-    CALL game_logic
+	
 	
     JMP game_loop
 

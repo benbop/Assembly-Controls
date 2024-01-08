@@ -9,16 +9,19 @@ X dw 100
 Board dw 200
 TIME_AUX DB 0
 PressFlag db 0
-SnakeBody dw 8
+SnakeBody dw 8	
 Xapple dw 80
 yapple dw 80
-Random dw 0
+Random_x dw 50
+Random_y dw 50
+Speed dw 5
 ; --------------------------
 CODESEG
 	
 
 
 PROC moves
+
     MOV AH, 01h       ; Function 01h - Check for Key Press
     INT 16h
     JZ exit_moves     ; Jump if ZF is set (no key pressed)
@@ -31,8 +34,7 @@ PROC moves
 	je w_pressed
     
     ; Check if AH contains 'S' (ASCII value 83)
-    CMP AL, 's'
-    je s_pressed
+    
     ; Check if AH contains 'D' (ASCII value 68)
     CMP AL, 'd'
     je d_pressed
@@ -40,7 +42,8 @@ PROC moves
     CMP AL, 'a'
     je a_pressed
     ; Check if AH contains '1B' (Escape key)
-    
+    CMP AL, 's'
+    je s_pressed
 
 exit_moves:
     RET
@@ -49,7 +52,9 @@ ENDP moves
 
 PROC w_pressed
     mov [PressFlag], 1
-	SUB [Y], 5
+	mov cx , [Speed]
+	SUB [Y], cx
+	
 
     CHECK_TIME1:         ;time checking loop
     MOV AH,2Ch 					 ;get the system time
@@ -59,17 +64,20 @@ PROC w_pressed
     JE CHECK_TIME1
     MOV [TIME_AUX],DL 
 
-    CALL draw_player
+    CALL draw
+	
 	call moves
 	CMP [PressFlag],1
     je w_pressed
     
 	RET
 ENDP w_pressed
-d:
+
 PROC d_pressed
     mov [PressFlag], 2
-	ADD [X], 5
+	mov cx , [Speed]
+	ADD [X], cx
+	
 
     CHECK_TIME2:          ;time checking loop
     MOV AH,2Ch 					 ;get the system time
@@ -79,16 +87,19 @@ PROC d_pressed
     JE CHECK_TIME2
     MOV [TIME_AUX],DL 
 
-    CALL draw_player
+    CALL draw
+	
 	call moves
 	cmp [PressFlag],2
     je d_pressed
 	ret
 ENDP d_pressed
-a:
+
 PROC a_pressed
     mov [PressFlag], 3
-	SUB [X], 5
+	mov cx , [Speed]
+	SUB [X], cx
+	
 
     CHECK_TIME3:           ;time checking loop
     MOV AH,2Ch 					 ;get the system time
@@ -98,18 +109,18 @@ PROC a_pressed
     JE CHECK_TIME3
     MOV [TIME_AUX],DL 
 
-    CALL draw_player
+    CALL draw
+	
 	call moves
 	CMP [PressFlag],3
     je a_pressed
 	ret
 ENDP a_pressed
-s:
- PROC s_pressed
-    ADD [Y], 5
-    mov [PressFlag], 4
-	
 
+ PROC s_pressed
+    mov cx , [Speed]
+	ADD [Y], cx
+    mov [PressFlag], 4
     CHECK_TIME4:           ;time checking loop
     MOV AH,2Ch 					 ;get the system time
     INT 21h 			 ;is the current time equal to the previous one(TIME_AUX)?
@@ -117,93 +128,140 @@ s:
 
     JE CHECK_TIME4
     MOV [TIME_AUX],DL 
-
-    CALL draw_player
+    CALL draw
 	call moves
 	CMP [PressFlag],4
     je s_pressed
+	RET
 ENDP s_pressed
 
-PROC draw_player
+PROC draw
+CALL check_collision
+	apple:
     MOV AX, 13h
     INT 10h
     
     MOV AX, 0C07h     ; Function 0Ch, Set Pixel Color
     MOV BH, 0         ; Page number (usually 0 in mode 13h)
     
-    MOV CX, [X]       ; X-coordinate
-    MOV DX, [Y]       ; Y-coordinate
-    MOV SI, 0
-    MOV DI, 0
-    MOV AL, 2; Color green
-    
-    draw_row_loop:
 	
-        draw_pixel_loop:
-		
+    ; Draw the apple
+    MOV CX, [Xapple]  ; X-coordinate of the apple
+    MOV DX, [yapple]  ; Y-coordinate of the apple
+	MOV SI, 0
+    MOV DI, 0
+    MOV AL, 4          ; Color (choose a color different from the snake)
+	draw_row_loop_apple:
+        draw_pixel_loop_apple:
             INC CX
             INC DI
             
             INT 10h
-            CMP DI, 8
+            CMP DI, [SnakeBody] ; size of the apple must be the same size of the snake for collison to work
+            JNE draw_pixel_loop_apple
+            
+            SUB CX, [SnakeBody] ; without this the apple is not drwaing up its drawing to the side
+            MOV DI, 0
+            INC DX
+            INC SI
+            
+            CMP SI, [SnakeBody] ;  size of the apple must be the same size of the snake for collison to work
+            JNE draw_row_loop_apple
+    
+
+    ; Draw the snake
+    MOV CX, [X]       ; X-coordinate of the snake head
+    MOV DX, [Y]       ; Y-coordinate of the snake head
+    MOV SI, 0
+    MOV DI, 0
+    MOV AL, 2         ; Color green (you can choose a different color)
+    
+    draw_row_loop:
+        draw_pixel_loop:
+            INC CX
+            INC DI
+            
+            INT 10h
+            CMP DI, [SnakeBody]
             JNE draw_pixel_loop
             
-            SUB CX, 8
+            SUB CX, [SnakeBody]
             MOV DI, 0
             INC DX
             INC SI
             
             CMP SI, [SnakeBody]
-			
             JNE draw_row_loop
-			mov bx , [Xapple]
-			cmp bx, [X]
-			jne draw_apple
-			mov ax , [yapple]
-			cmp ax , [Y]
-			jne draw_apple
-			call rnd
-			mov dx , [Random]
-			mov [Xapple], dx		
-    call draw_apple
-			
 	
     RET
-ENDP draw_player
+ENDP draw
 
-PROC draw_apple
-    
-    
-    MOV AX, 0C07h     ; Function 0Ch, Set Pixel Color
-    MOV BH, 0         ; Page number (usually 0 in mode 13h)
-    
-    MOV CX, [Xapple]       ; X-coordinate
-    MOV DX, [yapple]       ; Y-coordinate
-    MOV AL, 2; Color red
-	INT 10h
+
+ PROC check_collision
+ 
+ 
+    mov ax, [yapple]
 	
-    
-    
+    cmp ax, [Y]
+    jne skip_draw_apple
+
+    mov bx, [Xapple]
+    cmp bx, [X]
+    jne skip_draw_apple
+
+    call rnd_x
+    mov dx, [Random_x]
+    mov [Xapple], dx
+	call rnd_y
+	mov dx , [Random_y]
+	mov [yapple], DX
+	
+    jmp apple
     RET
-ENDP draw_apple
-		Proc rnd
-			mov ah , 2ch
-			int 21h
-			mov [byte ptr Random] , DL
-			ret
-			ENDP rnd
+
+skip_draw_apple:
+    RET
+ENDP check_collision
+		Proc rnd_x
+		checkForFiveX:  ; checks if the rnd_x int is divisible by five
+    mov ah, 2ch
+    int 21h
+	mov bx , [Random_x]
+    mov [byte ptr Random_x], dl
+	xor DX,DX ; reset dx so u can later check remiander
+	mov ax , [Random_x]
+	div [Speed] ; divide by speed of snake
+	cmp DX,0
+	JNE checkForFiveX
+	
+    ret
+ENDP rnd_x
+Proc rnd_y
+
+checkForFiveY:  ; checks if the rnd_x int is divisible by five
+		mov ah, 2ch
+		int 21h
+		mov bx , [Random_y]
+		mov [byte ptr Random_y], dl
+		xor DX,DX ; reset dx so u can later check remiander
+			mov ax , [Random_y]
+			div [Speed] ; divide by speed of snake
+			cmp DX,0
+		JNE checkForFiveY
+		ENDP rnd_y
 PROC game_logic
+
     CHECK_TIME:                      ;time checking loop
         MOV AH, 2Ch                  ;get the system time
         INT 21h                      ;is the current time equal to the previous one(TIME_AUX)?
         CMP DL, [TIME_AUX]           ;is the current time equal to the previous one(TIME_AUX)?
-
+		
         JE CHECK_TIME                ;if it is the same, check again
 
         ; If it reaches this point, it's because the time has passed
         MOV [TIME_AUX], DL           ;update time
         CALL moves
-        CALL draw_player
+        CALL draw
 		
         
 
@@ -223,6 +281,7 @@ start:
     game_loop:
 	
     CALL game_logic
+	
     JMP game_loop
 
 exit:

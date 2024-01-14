@@ -11,12 +11,17 @@ PressFlag db 0 ; press flag
 SnakeBody dw 5	; body of charcter
 Xapple dw 80 ; y of apple
 yapple dw 80 ; x of apple
-Random_x dw 50 ; my rnds
-Random_y dw 50 ; my rnds
+Random_x dw 80 ; my rnds
+Random_y dw 80 ; my rnds
 Speed dw 5 ; speed of snake
 Player_Score DB 48 ; ascii value of 0
-level db 1
-
+level dw 1
+SEED dw 11
+FlagForRnd dw 1 ; if its RND_y we can use any y value times 5 if its x it can be any value from 150,1
+CenterSquare_Y dw 0
+CenterSquare_X dw 0
+CenterApple_Y dw 0
+CenterApple_X dw 0
 
 ; --------------------------
 CODESEG
@@ -30,18 +35,28 @@ MOV AH, 02h
 	RET
 	ENDP set_cursor
 PROC Score
+
+	
     mov ah, 09h  ; Display character function
 	mov bh, 0    ; Page number
 	mov cx, 1    ; Number of times to display character
-	mov al, [Player_Score]  ; Character to display
-    mov bl, [level]    ; Attribute (text color)
+	mov al, [byte ptr Random_x]  ; Character to display
+	ADD AL, '0'        ; Convert to ASCII
+    mov bl, [byte ptr level]    ; Attribute (text color)
     int 10h
     MOV AH, 02h
     MOV BH, 0
     MOV DH, 1 ; Adjust row for the score display
     MOV DL, 1 ; Adjust column for the score display
     INT 10h
-    RET
+	
+    
+    MOV AH, 02h
+    MOV BH, 0
+    MOV DH, 1 ; Adjust row for the score displayx
+    MOV DL, 20 ; Adjust column for the score display y
+	int 10h
+	
 ENDP Score
 
   
@@ -57,16 +72,14 @@ PROC moves
     ; Check if AH contains 'W' (ASCII value 87)
     CMP AL, 'w'
 	je w_pressed
-    
-    ; Check if AH contains 'S' (ASCII value 83)
-    
+
     ; Check if AH contains 'D' (ASCII value 68)
     CMP AL, 'd'
     je d_pressed
     ; Check if AH contains 'A' (ASCII value 65)
     CMP AL, 'a'
     je a_pressed
-    ; Check if AH contains '1B' (Escape key)
+    ; Check if AH contains 'S' 'S'
     CMP AL, 's'
     JMP s_pressed
 
@@ -172,6 +185,7 @@ ENDP s_pressed
 PROC draw
 
 
+	
     MOV AX, 0C07h     ; Function 0Ch, Set Pixel Color
     MOV BH, 0         ; Page number (usually 0 in mode 13h)
 
@@ -206,6 +220,10 @@ PROC draw
     MOV BH, 0         ; Page number (usually 0 in mode 13h)
     
     ; Draw the apple
+	
+	
+	
+	
     MOV CX, [Xapple]  ; X-coordinate of the apple
     MOV DX, [yapple]  ; Y-coordinate of the apple
     MOV SI, 0
@@ -253,7 +271,31 @@ PROC draw
             CMP SI, [SnakeBody] 
             JNE draw_row_loop
 
-CALL check_collision
+
+ 
+
+	
+	
+mov  si, [SnakeBody]      ; 5 (best to keep this an odd number: 3, 5, 7, ...
+shr  si, 1                ; 2
+
+mov  bx, [X]
+lea  ax, [bx + si + 1]    ; X + 3
+mov  [CenterSquare_X], ax
+
+mov  bx, [Y]
+lea  ax, [bx + si]        ; Y + 2
+mov  [CenterSquare_Y], ax
+
+mov  bx, [Xapple]
+lea  ax, [bx + si + 1]    ; Xapple + 3
+mov  [CenterApple_X], ax
+
+mov  bx, [Yapple]
+lea  ax, [bx + si]        ; Yapple + 2
+mov  [CenterApple_Y], ax
+call check_collision
+
 		
 
     RET
@@ -261,82 +303,131 @@ ENDP draw
 
 
 
- PROC check_collision ; checks for collison with snake
- 
+ PROC check_collision
+  mov  ax, [CenterSquare_X]
+  sub  ax, [CenterApple_X]
+  jns  DeltaX
+  neg  ax
+DeltaX:
+  cmp  ax, [SnakeBody]
+  jnb  NoCollision
 
-    mov ax, [yapple]
+  mov  ax, [CenterSquare_Y]
+  sub  ax, [CenterApple_Y]
+  jns  DeltaY
+  neg  ax
+DeltaY:
+  cmp  ax, [SnakeBody]
+  jnb  NoCollision
+Collision:
 	
-    cmp ax, [Y]
-    jne skip_draw_apple
-
-    mov bx, [Xapple]
-    cmp bx, [X]
-    jne skip_draw_apple
-
-    call rnd_x ; moves snake to x coords
-    mov dx, [Random_x]
-	ADD DX , 40 ; settings borders of the screen decided on 90 so game is centerd
-    mov [Xapple], dx
 	Inc [Player_Score]
-	cmp [Player_Score], 58
-	jne score_inc
+	cmp [Player_Score], 59
+	jne score_Show
 	
 	
 	inc [level]
 	mov [Player_Score], 49
-	inc [Speed]
-	score_inc:
+	mov cx, [level]
+		ADD [SnakeBody], cx
+		ADD [Speed], cx
+		
+		
+	
+	
+	score_Show:
 	call set_cursor
 	call Score
 	
 	
 	
-	call rnd_y ; moves snake to y coords
-	mov dx , [Random_y]
-	ADD DX , 50 ; settings borders of the screen has to be at least 50 so no artifacts!!!
-	mov [yapple], DX
 	
-    
-    RET
+	
+   
+    CALL rnd_y
+    CALL rnd_x
 
-skip_draw_apple:
+NoCollision:
     RET
 	
 ENDP check_collision ; hitbox code
+;Randoms 
+PROC rand2num1toValue_Y
+    push dx
+    push bx
+    xor dx, dx          ; Compute randval(DX) mod 10 to get num
+	
+	
+	
+    mov bx, 25          ;     between 1 and given value
+    div bx
+    inc dx              ; DX = modulo from division
+	                  
+    mov [Random_y], ax
+    pop bx
+    pop dx
+    RET
+	ENDP rand2num1toValue_Y
+	
+	PROC rand2num1toValue_X
+	push dx
+    push bx
+    xor dx, dx          ; Compute randval(DX) mod 10 to get num
+	
+	mov bx, 25          ;     between 1 and given value
+    div bx
+    inc dx              ; DX = modulo from division
+                        
+    mov [Random_x], dx
+    pop bx
+    pop dx
+    ret
+	ENDP rand2num1toValue_X
+	; Set LCG PRNG seed to system timer ticks
+; Inputs:   AX = seed
+; Modifies: AX 
+; Return:   nothing 
+Proc srandsystime
+    xor ax, ax          ; Int 1Ah/AH=0 to get system timer in CX:DX 
+    int 1Ah
+    mov [seed], dx      ; seed = 16-bit value from DX
+    ret
+ENDP srandsystime
 
-		Proc rnd_x
+PROC rand
+    push dx
+    mov ax, 25173       ; LCG Multiplier
+    mul [word ptr seed] ; DX:AX = LCG multiplier * seed
+    add ax, 13849       ; Add LCG increment value
+    mov [seed], ax      ; Update seed
+    ; AX = (multiplier * seed + increment) mod 65536
+    pop dx
+    ret
+ENDP rand
+
+Proc rnd_x
 		
-		checkForFiveX:  ; checks if the rnd_x int is divisible by five
-    mov ah, 2ch ; get time method
-    int 21h ; call for clock
-	add  DL, DL
+	call srandsystime   ; Seed PRNG with system time, call once only 
+    call rand           ; Get a random number in AX
+    call rand2num1toValue_X
+    
+	mov bx , [Random_x]
 	
-    mov [byte ptr Random_x], dl
-		mov dx,0
-		mov ax , [Random_x]
-		div [SnakeBody] ; divide by body of snake
-	cmp DX,0
-	
-	JNE checkForFiveX
+    mov [Xapple], bx
 	
     ret
 ENDP rnd_x
 
 Proc rnd_y
+	call srandsystime   ; Seed PRNG with system time, call once only 
+    call rand           ; Get a random number in AX
+    call rand2num1toValue_Y
 
-checkForFiveY:  ; checks if the rnd_x int is divisible by five
-
-		mov ah, 2ch
-		int 21h
-		mov bx , [Random_y]
-		mov [byte ptr Random_y], dl
-		
-		mov dx,0
-			mov ax , [Random_y]
-			div [SnakeBody] ; divide by speed of snake
-			cmp DX,0
-		JNE checkForFiveY
-		
+	mov bx , [Random_y]
+	xor ax , AX
+	
+    mov [yapple], bx
+    RET
 		ENDP rnd_y
 		
 PROC game_logic
@@ -346,17 +437,17 @@ PROC game_logic
         INT 21h                      ;is the current time equal to the previous one(TIME_AUX)?
         CMP DL, [TIME_AUX]           ;is the current time equal to the previous one(TIME_AUX)?
 		
-        JE CHECK_TIME                ;if it is the same, check again
+        JE CHECK_TIME              ; if it is the same, skip updating the game state
 
         ; If it reaches this point, it's because the time has passed
         MOV [TIME_AUX], DL           ;update time
-        
+		
+		
 		CALL moves
 		
-        
-		
-        
-
+		call draw
+		cmp [level] , 1
+	
         RET
 
 ENDP game_logic
@@ -374,11 +465,6 @@ start:
 	
     game_loop:
 	CALL game_logic
-    CALL draw           ; Draw the game screen
-    
-	 
-	
-	
     JMP game_loop
 
 exit:

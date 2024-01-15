@@ -17,7 +17,6 @@ Speed dw 5 ; speed of snake
 Player_Score DB 48 ; ascii value of 0
 level dw 1
 SEED dw 11
-FlagForRnd dw 1 ; if its RND_y we can use any y value times 5 if its x it can be any value from 150,1
 CenterSquare_Y dw 0
 CenterSquare_X dw 0
 CenterApple_Y dw 0
@@ -40,7 +39,7 @@ PROC Score
     mov ah, 09h  ; Display character function
 	mov bh, 0    ; Page number
 	mov cx, 1    ; Number of times to display character
-	mov al, [byte ptr Random_x]  ; Character to display
+	mov al, [byte ptr level]  ; display level
 	ADD AL, '0'        ; Convert to ASCII
     mov bl, [byte ptr level]    ; Attribute (text color)
     int 10h
@@ -296,8 +295,10 @@ lea  ax, [bx + si]        ; Yapple + 2
 mov  [CenterApple_Y], ax
 call check_collision
 
-		
 
+		
+	
+	
     RET
 ENDP draw
 
@@ -329,12 +330,12 @@ Collision:
 	inc [level]
 	mov [Player_Score], 49 ;  set to 1
 	mov cx, [level]
-		ADD [SnakeBody], cx
-		ADD [Speed], cx
+		
+		ADD [Speed], cx ; increment speed beacuse he passed the level
 		
 		
 	
-	
+	; show score
 	score_Show:
 	call set_cursor
 	call Score
@@ -343,11 +344,12 @@ Collision:
 	
 	
 	
-   
+   ; change apple postion
     CALL rnd_y
     CALL rnd_x
 
 NoCollision:
+call check_bounds ; checks for out of bounds
     RET
 	
 ENDP check_collision ; hitbox code
@@ -381,12 +383,11 @@ PROC rand2num1toValue_Y
     push bx
 	 
     xor dx, dx          ; Compute randval(DX) mod 10 to get num
-	mov bx, 220          ;     between 1 and border Width
-    div bx
-	inc dx 
-    add bx , DX
-	ADD bx , 40 ; start of border
-    mov [Random_x], bx
+	
+	 xor dx, dx          ; Compute randval(DX) mod 10 to get num
+    mov bx, 240          ; Set the range (240 - 40 + 1 = 201)
+    div bx              ; Divide by the range
+    mov [Random_x], ax
 	
     pop bx
     pop dx
@@ -419,11 +420,12 @@ Proc rnd_x
 	call srandsystime   ; Seed PRNG with system time, call once only 
     call rand           ; Get a random number in AX
     call rand2num1toValue_X
-    
+    push bx
 	
 	MOV bx , [Random_x]
+	add bx , 40
     mov [Xapple], ax
-	
+	pop bx
     ret
 ENDP rnd_x
 
@@ -436,8 +438,33 @@ Proc rnd_y
 	MOV bx , [Random_y]
     mov [yapple], bx
     RET
-		ENDP rnd_y
-		
+ENDP rnd_y
+
+
+PROC check_bounds
+    ; Check if the snake's head is out of bounds
+    mov ax, [X]
+    cmp ax, 40
+    jl out_of_bounds   ; Jump if X coordinate is less than 40
+
+    mov ax, [X]
+    cmp ax, 280
+    jg out_of_bounds   ; Jump if X coordinate is greater than 240
+
+    mov ax, [Y]
+    cmp ax, 50
+    jl out_of_bounds   ; Jump if Y coordinate is less than 50
+
+    mov ax, [Y]
+    cmp ax, 200
+    jg out_of_bounds   ; Jump if Y coordinate is greater than 150
+
+    ret
+
+out_of_bounds:
+    jmp exit
+    RET
+ENDP check_bounds		
 PROC game_logic
 
     CHECK_TIME:                      ;time checking loop
@@ -452,6 +479,7 @@ PROC game_logic
 		
 		
 		CALL moves
+		
 		call draw
 	
         RET

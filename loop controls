@@ -3,18 +3,21 @@ MODEL small
 STACK 100h
 DATASEG
 ; --------------------------
-filename db 'Again.bmp',0
+filename_screen db 'Again.bmp',0
 filehandle dw ?
 Header db 54 dup (0)
 Palette db 256*4 dup (0)
 ScrLine db 320 dup (0) ; unrelated to actual image size
 ErrorMsg db 'Error', 13, 10 ,'$'
 
-
+filename db 'score.txt',0
+filehandle_score dw ?
+Message db 'Hello World!'
 
 Y dw 100 ; of charchter
 X dw 100 ; of charchter
 TIME_AUX DB 0 ; for waiting in between frames 
+
 PressFlag db 0 ; press flag
 SnakeBody dw 5	; body of charcter
 Xapple dw 80 ; y of apple
@@ -23,17 +26,114 @@ Random_x dw 80 ; my rnds
 Random_y dw 80 ; my rnds
 Speed dw 5 ; speed of snake
 Player_Score DB 48 ; ascii value of 0
-level dw 1
+level db 1
+
 SEED dw 11
+
 CenterSquare_Y dw 0
 CenterSquare_X dw 0
 CenterApple_Y dw 0
 CenterApple_X dw 0
 
+Max db 0
+NewLine db ' '
+flagforscore db 0
 ; --------------------------
 CODESEG
 
-game:
+proc OpenFile_Score
+; Open file for reading and writing
+	mov ah, 3Dh
+	mov al, 2
+	mov dx, offset filename
+	int 21h
+	jc openerror
+	mov [filehandle_score], ax
+	ret
+	openerror :
+	mov dx, offset ErrorMsg
+	mov ah, 9h
+	int 21h
+	ret
+endp OpenFile_Score
+proc WriteToFile 
+	; Write score to file
+	mov ah,40h	
+	mov bx, [filehandle_score] ; name of file
+	
+	cmp bx, 0
+    je file_not_open ; check if file not open
+	
+	mov cx,1 ; num of bytes
+	push ax
+	mov al , [Player_Score] ; put player score in msg
+	mov [Message] , al
+	pop ax
+	mov dx,offset Message ; diffrent high scores
+	
+	int 21h
+	
+	jc write_error ; erorrs for writing
+	mov ah, 40h
+    mov cx, 1 ; Num of bytes 
+    push ax
+    mov al, ' ' ; space character
+    mov [Message], al
+    pop ax
+    mov dx, offset Message
+    int 21h
+    jc write_error ; handle errors
+	mov ah, 40h
+	mov cx, 1 ; Num of bytes 
+	push ax
+	
+	mov al , [byte ptr level] ; put player score in msg
+	mov [Message] , al
+	add [Message] , '0'
+	mov dx, offset Message
+	pop ax
+	int 21h
+	jc write_error
+
+ret
+
+file_not_open:
+jmp exit
+
+write_error:
+    jmp exit
+	
+endp WriteToFile
+proc CloseFile
+; Close file
+mov ah,3Eh
+mov bx, [filehandle_score]
+int 21h
+ret
+endp CloseFile
+;unstble
+;proc MaxScore
+;mov ah ,3Fh
+;mov bx , 0
+;mov cx , 1
+;;mov dx , 2
+;int 21h
+;cmp ax, [word ptr level] 
+;jnge bye
+;checkScore:
+;mov ah, 3Fh
+;mov bx ,0
+;mov cx , 1
+;;mov dx , 0
+;int 21h
+;cmp ax , [word ptr Player_Score]
+;jge bye
+
+;call WriteToFile
+;bye:
+;ret
+;ENDP MaxScore
+
 proc set_cursor
 MOV AH, 02h
     MOV BH, 0
@@ -316,12 +416,12 @@ proc OpenFile
 ; Open file
 mov ah, 3Dh
 xor al, al
-mov dx, offset filename
+mov dx, offset filename_screen
 int 21h
-jc openerror
+jc openerror1
 mov [filehandle], ax
 ret
-openerror :
+openerror1 :
 mov dx, offset ErrorMsg
 mov ah, 9h
 int 21h
@@ -435,7 +535,7 @@ Collision:
 	
 	inc [level]
 	mov [Player_Score], 49 ;  set to 1
-	mov cx, [level]
+	mov cx, [word ptr level]
 		
 		INC [Speed]
 		
@@ -569,6 +669,10 @@ PROC check_bounds
     ret
 
 out_of_bounds:
+call OpenFile_Score
+call WriteToFile
+call CloseFile
+
 call OpenFile
 call ReadHeader
 call ReadPalette
@@ -617,7 +721,7 @@ start:
     MOV AX, @data
     MOV DS, AX
 
-	plax:
+	
     MOV AX, 13h
     INT 10h ; Set video mode 13h (320x200 pixels, 256 colors)
 	
@@ -632,20 +736,15 @@ start:
 	
 	  proc reset_game
         ; Your reset code goes here
-        ; For example, you can reset variables and counters, and then jump back to the game loop
-		mov [X], 80
-		mov [Y],80
-		mov [Xapple],100
-		mov [yapple],100
+        ; reset game and then rerun it
+		mov [X], 100
+		mov [Y],100
+		mov [Xapple],80
+		mov [yapple],80
 		mov [Speed] , 5
-		;clear the screen
-		mov ah, 06h ; Scroll up window
-		mov al, 0   ; Number of lines to scroll
-		mov bh, 07h ; Text attribute (background color)
-		mov cx, 0   ; Upper left corner
-		mov dh, 24  ; Lower right corner
-		mov dl, 79  ; Lower right corner
-		int 10h     ; Call BIOS interrupt
+		mov [level] , 1
+		mov [Player_Score] , 48
+		jmp start
 		; reset color pallet
 		
         JMP game_loop

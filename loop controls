@@ -429,7 +429,7 @@ DeltaY:
 Collision:
 	
 	Inc [Player_Score]
-	cmp [Player_Score], 59 ; 59 is '9' in ascii
+	cmp [Player_Score], 58 ; 58 is '9' in ascii
 	jne score_Show
 	
 	
@@ -437,7 +437,7 @@ Collision:
 	mov [Player_Score], 49 ;  set to 1
 	mov cx, [level]
 		
-		ADD [Speed], cx ; increment speed beacuse he passed the level
+		INC [Speed]
 		
 		
 	
@@ -490,10 +490,11 @@ PROC rand2num1toValue_Y
 	 
     xor dx, dx          ; Compute randval(DX) mod 10 to get num
 	
-	 xor dx, dx          ; Compute randval(DX) mod 10 to get num
-    mov bx, 240          ; Set the range (240 - 40 + 1 = 201)
+	xor dx, dx          ; Compute randval(DX) mod 10 to get num
+    mov bx, 201          ; Set the range (240 - 40 + 1 = 201)
     div bx              ; Divide by the range
-    mov [Random_x], ax
+	inc dx
+    mov [Random_x], dx
 	
     pop bx
     pop dx
@@ -530,7 +531,7 @@ Proc rnd_x
 	
 	MOV bx , [Random_x]
 	add bx , 40
-    mov [Xapple], ax
+    mov [Xapple], bx
 	pop bx
     ret
 ENDP rnd_x
@@ -636,6 +637,8 @@ start:
 		mov [Y],80
 		mov [Xapple],100
 		mov [yapple],100
+		mov [Speed] , 5
+		;clear the screen
 		mov ah, 06h ; Scroll up window
 		mov al, 0   ; Number of lines to scroll
 		mov bh, 07h ; Text attribute (background color)
@@ -643,6 +646,8 @@ start:
 		mov dh, 24  ; Lower right corner
 		mov dl, 79  ; Lower right corner
 		int 10h     ; Call BIOS interrupt
+		; reset color pallet
+		
         JMP game_loop
 		endp reset_game
 

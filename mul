@@ -25,7 +25,8 @@ SnakeBody dw 5	; body of charcter
 Xapple dw 80 ; y of apple
 yapple dw 80 ; x of apple
 
-PressFlag db 0 ; press flag
+PressFlag1 db 0 ; press flag
+PressFlag2 db 0
 FstBody dw 5	; body of charcter
 Fstxapple dw 200 ; y of apple
 Fstyapple dw 80 ; x of apple
@@ -191,11 +192,11 @@ ENDP Score
 	
     ; Check if AH contains 'W' (ASCII value 87)
     CMP AL, 'w'
-	je w_pressed
+	je w_helper
 
     ; Check if AH contains 'D' (ASCII value 68)
     CMP AL, 'd'
-    je d_pressed
+    je d_helper
     ; Check if AH contains 'A' (ASCII value 65)
     CMP AL, 'a'
     je a_helper
@@ -222,207 +223,82 @@ exit_moves:
 
 ENDP moves
 j_helper:
-jmp j_pressed
+mov [PressFlag2] , 4
 ret
 
 h_helper:
-jmp h_pressed
+mov [PressFlag2] , 3
 ret
 k_helper:
-jmp k_pressed
+mov [PressFlag2] , 2
 ret
 u_helper:
-jmp u_pressed
+mov [PressFlag2] , 1
 ret
 s_helper:
-jmp s_pressed
+mov [PressFlag1] , 4
 ret
 a_helper:
-jmp a_pressed
+mov [PressFlag1] , 3
+ret
+d_helper:
+mov [PressFlag1] , 2
+ret
+w_helper:
+mov [PressFlag1] , 1
 ret
 
-PROC w_pressed
-    mov [PressFlag], 1
-	mov cx , [Speed]
-	SUB [Y], cx
-	
-	
+Proc LastPressed
+CALL moves
+cmp [PressFlag2],1
+JNE temp
+SUB [FstY],5  
+temp:
 
-    CHECK_TIME1:         ;time checking loop
-    MOV AH,2Ch 					 ;get the system time
-    INT 21h 			 ;is the current time equal to the previous one(TIME_AUX)?
-    CMP DL,[TIME_AUX] 			 ;is the current time equal to the previous one(TIME_AUX)?
+cmp [PressFlag2] , 2
+jne temp1
+add [FstX],5  
+temp1:
 
-    JE CHECK_TIME1
-    MOV [TIME_AUX],DL 
-	
-    CALL draw
-	
-	call moves
-	CMP [PressFlag],1
-    je w_pressed
-    
-	RET
-ENDP w_pressed
+cmp [PressFlag2] , 3
+jne temp2
+sub [FstX],5  
+temp2:
 
-PROC d_pressed
-    mov [PressFlag], 2
-	mov cx , [Speed]
-	ADD [X], cx
-	
-
-    CHECK_TIME2:          ;time checking loop
-    MOV AH,2Ch 					 ;get the system time
-    INT 21h 			 ;is the current time equal to the previous one(TIME_AUX)?
-    CMP DL,[TIME_AUX] 			 ;is the current time equal to the previous one(TIME_AUX)?
-
-    JE CHECK_TIME2
-    MOV [TIME_AUX],DL 
-	
-    CALL draw
-	
-	call moves
-	cmp [PressFlag],2
-    je d_pressed
-	ret
-ENDP d_pressed
-
-PROC a_pressed
-    mov [PressFlag], 3
-	mov cx , [Speed]
-	SUB [X], cx
-	
-
-    CHECK_TIME3:           ;time checking loop
-    MOV AH,2Ch 					 ;get the system time
-    INT 21h 			 ;is the current time equal to the previous one(TIME_AUX)?
-    CMP DL,[TIME_AUX] 			 ;is the current time equal to the previous one(TIME_AUX)?
-	
-    JE CHECK_TIME3
-    MOV [TIME_AUX],DL 
-	
-    CALL draw
-	
-	call moves
-	CMP [PressFlag],3
-    je a_pressed
-	ret
-ENDP a_pressed
-
-PROC s_pressed
-    mov [PressFlag], 4
-	mov cx , [Speed]
-	ADD [Y], cx
-    
-    CHECK_TIME4:           ;time checking loop
-    MOV AH,2Ch 					 ;get the system time
-    INT 21h 			 ;is the current time equal to the previous one(TIME_AUX)?
-    CMP DL,[TIME_AUX] 			 ;is the current time equal to the previous one(TIME_AUX)?
-
-    JE CHECK_TIME4
-	
-    MOV [TIME_AUX],DL 
-    CALL draw
-	
-	call moves
-	
-	CMP [PressFlag],4
-    je s_pressed
-	RET
-ENDP s_pressed
+cmp [PressFlag2] , 4
+jne temp3
+add [FstY],5  
+temp3:
 
 
+cmp [PressFlag1] , 1
+JNE temp4
+SUB [Y],5  
+temp4:
 
-PROC u_pressed
-    mov [PressFlag], 1
-	mov cx , [Speed]
-	SUB [FstY], cx
-	
-	
+cmp [PressFlag1] , 2
+jne temp5
+add [X],5  
+temp5:
 
-    CHECK_TIME5:         ;time checking loop
-    MOV AH,2Ch 					 ;get the system time
-    INT 21h 			 ;is the current time equal to the previous one(TIME_AUX)?
-    CMP DL,[TIME_AUX] 			 ;is the current time equal to the previous one(TIME_AUX)?
+cmp [PressFlag1] , 3
+jne temp6
+SUB [X],5  
+temp6:
 
-    JE CHECK_TIME5
-    MOV [TIME_AUX],DL 
-	
-    CALL draw
-	
-	call moves
-	CMP [PressFlag],1
-    je u_pressed
-    
-	RET
-ENDP u_pressed
+cmp [PressFlag1] , 4
+jne temp7
+add [Y],5  
+temp7:
+ret
+endp LastPressed
 
-PROC k_pressed
-    mov [PressFlag], 2
-	mov cx , [Speed]
-	ADD [FstX], cx
-	
 
-    CHECK_TIME6:          ;time checking loop
-    MOV AH,2Ch 					 ;get the system time
-    INT 21h 			 ;is the current time equal to the previous one(TIME_AUX)?
-    CMP DL,[TIME_AUX] 			 ;is the current time equal to the previous one(TIME_AUX)?
+Proc Keyboard
 
-    JE CHECK_TIME6
-    MOV [TIME_AUX],DL 
-	
-    CALL draw
-	
-	call moves
-	cmp [PressFlag],2
-    je k_pressed
-	ret
-ENDP k_pressed
-
-PROC h_pressed
-    mov [PressFlag], 3
-	mov cx , [Speed]
-	SUB [FstX], cx
-	
-
-    CHECK_TIME7:           ;time checking loop
-    MOV AH,2Ch 					 ;get the system time
-    INT 21h 			 ;is the current time equal to the previous one(TIME_AUX)?
-    CMP DL,[TIME_AUX] 			 ;is the current time equal to the previous one(TIME_AUX)?
-	
-    JE CHECK_TIME7
-    MOV [TIME_AUX],DL 
-	
-    CALL draw
-	
-	call moves
-	CMP [PressFlag],3
-    je h_pressed
-	ret
-ENDP h_pressed
-
-PROC j_pressed
-    mov [PressFlag], 4
-	mov cx , [Speed]
-	ADD [FstY], cx
-    
-    CHECK_TIME8:           ;time checking loop
-    MOV AH,2Ch 					 ;get the system time
-    INT 21h 			 ;is the current time equal to the previous one(TIME_AUX)?
-    CMP DL,[TIME_AUX] 			 ;is the current time equal to the previous one(TIME_AUX)?
-
-    JE CHECK_TIME8
-	
-    MOV [TIME_AUX],DL 
-    CALL draw
-	
-	call moves
-	
-	CMP [PressFlag],4
-    je j_pressed
-	RET
-ENDP j_pressed
- 
+	call LastPressed
+	call draw
+	endp Keyboard
 
 
 
@@ -949,7 +825,7 @@ PROC game_logic
         MOV [TIME_AUX], DL           ;update time
 		
 		
-		CALL moves
+		CALL Keyboard
 		
 		call draw
 		

@@ -218,7 +218,7 @@ ENDP Score
     CMP AL, 'h' ; arrow right key      
     je h_helper
     
-    CMP AL, 'j'     ; arrow down key  
+    CMP AL, 'j'    ; arrow down key  
     Je j_helper
 	
 exit_moves:
@@ -266,6 +266,7 @@ temp:
 
 cmp [PressFlag2] , 2
 jne temp1
+mov cx , [speed]
 add [FstX],cx  
 temp1:
 
@@ -941,7 +942,7 @@ Proc rnd_y_player1
 	push bx
 	
 	MOV bx , [Random_y]
-	add bx , 50
+	add bx , 49
     mov [FstYapple], bx
 	pop bx
     RET
@@ -954,7 +955,7 @@ Proc rnd_y
 	push bx
 	
 	MOV bx , [Random_y]
-	add bx , 50
+	add bx , 49
     mov [yapple], bx
 	pop bx
     RET
@@ -964,36 +965,36 @@ ENDP rnd_y
 PROC check_bounds
     ; Check if the snake's head is out of bounds
     mov ax, [FstX]
-    cmp ax, 175
+    cmp ax, 174
     jl out_of_bounds1   ; Jump if FstX coordinate is less than 40
 
     mov ax, [FstX]
-    cmp ax, 275
+    cmp ax, 274
     jg out_of_bounds1   ; Jump if FstX coordinate is greater than 240
 
     mov ax, [FstY]
-    cmp ax, 25
+    cmp ax, 24
     jl out_of_bounds1   ; Jump if FstY coordinate is less than 50
 
     mov ax, [FstY]
-    cmp ax, 125
+    cmp ax, 124
     jg out_of_bounds1   ; Jump if FstY coordinate is greater than 150
 	
 	
 	mov ax, [X]
-    cmp ax, 25
+    cmp ax, 24
     jl out_of_bounds2   ; Jump if FstX coordinate is less than 40
 
     mov ax, [X]
-    cmp ax, 125
+    cmp ax, 124
     jg out_of_bounds2   ; Jump if FstX coordinate is greater than 240
 
     mov ax, [Y]
-    cmp ax, 25
+    cmp ax, 24
     jl out_of_bounds2   ; Jump if FstY coordinate is less than 50
 
     mov ax, [Y]
-    cmp ax, 125
+    cmp ax, 124
     jg out_of_bounds2   ; Jump if FstY coordinate is greater than 150
 	ret
 	out_of_bounds1:

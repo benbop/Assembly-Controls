@@ -1,20 +1,30 @@
+; IDFK WTF ARE THE FIRST 2 CHARCHTERS DONT FUCKING CHANGE THEM PLS JUST REMEMBER
+; FIRST 2 YOU WRITE FOR ABSOLUTE NO FUCKIGN REASON
+; SECOND TWO YOU WRITE ONLY IF THE SCORE IS BIGGER 
+; LAST THREE ARE THE FUCKING Name
 IDEAL
 MODEL small
 STACK 100h
 DATASEG
 ; --------------------------
-filename db 'Screen.bmp',0
+Player_Buffer db 2 dup(?),0
+filename_screen db 'Again.bmp',0
 filehandle dw ?
 Header db 54 dup (0)
 Palette db 256*4 dup (0)
 ScrLine db 320 dup (0) ; unrelated to actual image size
 ErrorMsg db 'Error', 13, 10 ,'$'
 
+filename db 'score.txt',0
+filehandle_score dw ?
 
+PlayerName db 6 dup(?),13 ,'$'
 
+MaxScore db 2 dup(?),0
 Y dw 100 ; of charchter
 X dw 100 ; of charchter
 TIME_AUX DB 0 ; for waiting in between frames 
+
 PressFlag db 0 ; press flag
 SnakeBody dw 5	; body of charcter
 Xapple dw 80 ; y of apple
@@ -23,22 +33,140 @@ Random_x dw 80 ; my rnds
 Random_y dw 80 ; my rnds
 Speed dw 5 ; speed of snake
 Player_Score DB 48 ; ascii value of 0
-level dw 1
+level db 1
+
 SEED dw 11
+
 CenterSquare_Y dw 0
 CenterSquare_X dw 0
 CenterApple_Y dw 0
 CenterApple_X dw 0
 
+Xat db 0
+Yat db 0
+
+Max db 0
+NewLine db ' '
+flagforscore db 0
+
+GetName db 'Enter 3 Charchter Name ',13, 10 ,'$'
+savedscore db 0
+
+crrMax dw 0
 ; --------------------------
 CODESEG
 
+proc OpenFile_Score
+; Open file for reading and writing
+	mov ah, 3Dh
+	mov al, 2
+	mov dx, offset filename
+	int 21h
+	jc openerror
+	mov [filehandle_score], ax
+	ret
+	openerror :
+	mov dx, offset ErrorMsg
+	mov ah, 9h
+	int 21h
+	ret
+endp OpenFile_Score
+proc WriteToFile 
+	; Write score to file
+	mov ah,40h	
+	mov bx, [filehandle_score]
+	
+	
+	
+	cmp bx, 0
+    je file_not_open ; check if file not open
+	
+	
+	mov ah, 3Fh
+    mov bx, [filehandle_score]
+
+    ; Check if file is not open
+    cmp bx, 0
+    je file_not_open
+	
+	
+    ; Read the first 2 characters from the file into MaxScore
+    mov cx, 2
+	
+    lea dx, [MaxScore]
+	
+	
+	
+    int 21h
+	
+    ; Convert ASCII characters to numeric value
+	
+    mov al, [MaxScore]
+    sub al, '0' ; get level value numeric
+    mov ah, 0
+	shl ax , 3
+	add al , [MaxScore+1] ; currently dosent check good but GL
+	sub al ,'0'
+	
+	
+	mov [crrMax], ax
+	
+	mov ax , 0
+	
+	mov al, [level]
+    mov ah, 0
+	shl ax , 3
+	add al , [Player_Score]
+	sub al ,'0'
+	
+    ; Compare the scores
+    cmp ax, [crrMax]
+    jng NotBigger
+	
+	
+	
+	mov ah, 40h
+	mov cx, 2 ; Num of bytes 
+	mov al , [level] ; put player score in msg
+	add al , '0'
+	mov [Player_Buffer] , al
+	mov al , [Player_Score] ; put player score in msg
+	mov [Player_Buffer+1] , al
+	
+	mov dx, offset Player_Buffer
+	int 21h
+	jc write_error
+	mov ah, 40h
+	mov cx, 3 ; Num of bytes 
+	mov dx, offset PlayerName+2
+	int 21h
+	
+	NotBigger:
+	
+	
+ret
+
+file_not_open:
+jmp exit
+
+write_error:
+    jmp exit
+	
+
+endp WriteToFile
+proc CloseFile
+; Close file
+mov ah,3Eh
+mov bx, [filehandle_score]
+int 21h
+ret
+endp CloseFile
 
 proc set_cursor
 MOV AH, 02h
     MOV BH, 0
-    MOV DH, 1 ; Adjust row for the score display
-    MOV DL, 1 ; Adjust column for the score display
+    MOV DH, [Yat] ; Adjust row for the score display
+    MOV DL, [Xat] ; Adjust column for the score display
     INT 10h
 	RET
 	ENDP set_cursor
@@ -49,9 +177,9 @@ PROC Score
 	mov bh, 0    ; Page number
 	mov cx, 1    ; Number of times to display character
 	ADD AL, '0'        ; Convert to ASCII
-	mov al, [byte ptr Player_Score]  ; display level
+	mov al, [Player_Score]  ; display level
 	
-    mov bl, [byte ptr level]    ; Attribute (text color)
+    mov bl, [level]    ; Attribute (text color)
     int 10h
     MOV AH, 02h
     MOV BH, 0
@@ -316,12 +444,12 @@ proc OpenFile
 ; Open file
 mov ah, 3Dh
 xor al, al
-mov dx, offset filename
+mov dx, offset filename_screen
 int 21h
-jc openerror
+jc openerror1
 mov [filehandle], ax
 ret
-openerror :
+openerror1 :
 mov dx, offset ErrorMsg
 mov ah, 9h
 int 21h
@@ -397,12 +525,6 @@ cld ; Clear direction flag, for movsb
 mov cx,320
 mov si,offset ScrLine
 rep movsb ; Copy line to the screen
- ;rep movsb is same as the following code :
- ;mov es:di, ds:si
- ;inc si
- ;inc di
- ;dec cx
- ;loop until cx=0
 pop cx
 loop PrintBMPLoop
 ret
@@ -429,30 +551,33 @@ DeltaY:
 Collision:
 	
 	Inc [Player_Score]
-	cmp [Player_Score], 59 ; 59 is '9' in ascii
+	cmp [Player_Score], 58 ; 58 is '9' in ascii
 	jne score_Show
 	
 	
 	inc [level]
 	mov [Player_Score], 49 ;  set to 1
-	mov cx, [level]
+	mov cx, [word ptr level]
 		
-		ADD [Speed], cx ; increment speed beacuse he passed the level
+		INC [Speed]
 		
 		
 	
 	; show score
 	score_Show:
-	call set_cursor
-	call Score
+	 CALL rnd_y;change apple location y
+    CALL rnd_x ; change apple location x
+	
+	
+	call set_cursor ; display score
+	call Score 
 	
 	
 	
 	
 	
    ; change apple postion
-    CALL rnd_y
-    CALL rnd_x
+   
 
 NoCollision:
 call check_bounds ; checks for out of bounds
@@ -490,10 +615,11 @@ PROC rand2num1toValue_Y
 	 
     xor dx, dx          ; Compute randval(DX) mod 10 to get num
 	
-	 xor dx, dx          ; Compute randval(DX) mod 10 to get num
-    mov bx, 240          ; Set the range (240 - 40 + 1 = 201)
+	xor dx, dx          ; Compute randval(DX) mod 10 to get num
+    mov bx, 201          ; Set the range (240 - 40 + 1 = 201)
     div bx              ; Divide by the range
-    mov [Random_x], ax
+	inc dx
+    mov [Random_x], dx
 	
     pop bx
     pop dx
@@ -503,6 +629,7 @@ PROC rand2num1toValue_Y
 ; Inputs:   AX = seed
 ; Modifies: AX 
 ; Return:   nothing 
+
 Proc srandsystime
     xor ax, ax          ; Int 1Ah/AH=0 to get system timer in CX:DX 
     int 1Ah
@@ -530,7 +657,7 @@ Proc rnd_x
 	
 	MOV bx , [Random_x]
 	add bx , 40
-    mov [Xapple], ax
+    mov [Xapple], bx
 	pop bx
     ret
 ENDP rnd_x
@@ -546,8 +673,14 @@ Proc rnd_y
     RET
 ENDP rnd_y
 
-
+proc CloseFile_test
+  mov  ah, 3Eh
+  mov  bx, [filehandle]
+  int  21h
+  ret
+endp CloseFile_test
 PROC check_bounds
+
     ; Check if the snake's head is out of bounds
     mov ax, [X]
     cmp ax, 40
@@ -564,15 +697,55 @@ PROC check_bounds
     mov ax, [Y]
     cmp ax, 200
     jg out_of_bounds   ; Jump if Y coordinate is greater than 150
-
+	
     ret
 
 out_of_bounds:
-    JMP exit
+
+call OpenFile_Score
+call WriteToFile
+CALL CloseFile
+
+
+;end game screen
+call OpenFile
+call ReadHeader
+call ReadPalette
+call CopyPal
+call CopyBitmap
+
+
+check:
+	MOV AH, 01h       ; Function 01h - Check for Key Press
+    INT 16h
+    JZ check    ; Jump if ZF is set (no key pressed)
+
+    MOV AH, 00h       ; Function 00h - Read Key Stroke
+    INT 16h
+	cmp al , 'p' ; play again
+    je reset_game
+	
+	
+jmp out_of_bounds
     RET
 ENDP check_bounds	
-
-
+	
+ proc reset_game
+        ; Your reset code goes here
+        ; reset game and then rerun it
+		mov [X], 100
+		mov [Y],100
+		mov [Xapple],80
+		mov [yapple],80
+		mov [Speed] , 5
+		mov [level] , 1
+		mov [Player_Score] , 48
+			
+		jmp start
+		; reset color pallet
+		
+        JMP game_loop
+		endp reset_game
 
 PROC game_logic
 
@@ -598,26 +771,53 @@ ENDP game_logic
 
 
 start:
+	
+	
     MOV AX, @data
     MOV DS, AX
-
-
-    MOV AX, 13h
+	cmp [savedscore] , 0
+	jne alreadysaved
+	
+	mov ah,40h ; prints the msg
+	mov bx,1
+	mov cx, 23
+	mov dx,OFFSET GetName
+	int 21h 
+	mov ah, 0Ah
+	mov dx, offset PlayerName
+	mov bx, dx
+	mov [byte ptr bx], 4
+	
+	int 21h
+    mov [savedscore],1
+	
+	
+	
+	
+	
+	
+	alreadysaved:
+	MOV AX, 13h
     INT 10h ; Set video mode 13h (320x200 pixels, 256 colors)
 	
 	
+    
+	
+	
     game_loop:
-	CALL game_logic
-    JMP game_loop
+	 CALL game_logic
+        ; Check for key press to reset the game
+        
+        
 
-exit:
-Display_EndGame:
-call OpenFile
-call ReadHeader
-call ReadPalette
-call CopyPal
-call CopyBitmap
+        JMP game_loop
+	
+	 
 
-   
+
+
+	exit:	
+   mov ax, 4c00h
+int 21h
 
 END start

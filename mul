@@ -3,7 +3,9 @@ MODEL small
 STACK 100h
 DATASEG
 ; --------------------------
-filename_screen db 'Again.bmp',0
+
+filename_screen1 db 'Player1.bmp',0
+filename_screen2 db 'Player2.bmp',0
 filehandle dw ?
 Header db 54 dup (0)
 Palette db 256*4 dup (0)
@@ -33,9 +35,11 @@ Fstyapple dw 80 ; x of apple
 Random_x dw 80 ; my rnds
 Random_y dw 80 ; my rnds
 Speed dw 5 ; speed of snake
-Player_Score DB 48 ; ascii value of 0
-level db 1
+Player_Score_fst DB 48 ; ascii value of 0
+level_fst db 1
 
+Player_Score_Scnd db 48
+level_Scnd db 1
 SEED dw 11
 
 FstCenterSquare_FstY dw 0
@@ -51,72 +55,13 @@ CenterApple_X dw 0
 Max db 0
 NewLine db ' '
 flagforscore db 0
+
+screenFlag db 0
+
 ; --------------------------
 CODESEG
 
-proc OpenFile_Score
-; Open file for reading and writing
-	mov ah, 3Dh
-	mov al, 2
-	mov dx, offset filename
-	int 21h
-	jc openerror
-	mov [filehandle_score], ax
-	ret
-	openerror :
-	mov dx, offset ErrorMsg
-	mov ah, 9h
-	int 21h
-	ret
-endp OpenFile_Score
-proc WriteToFile 
-	; Write score to file
-	mov ah,40h	
-	mov bx, [filehandle_score] ; name of file
-	
-	cmp bx, 0
-    je file_not_open ; check if file not open
-	
-	mov cx,1 ; num of bytes
-	push ax
-	mov al , [Player_Score] ; put player score in msg
-	mov [Message] , al
-	pop ax
-	mov dx,offset Message ; diffrent high scores
-	
-	int 21h
-	
-	jc write_error ; erorrs for writing
-	mov ah, 40h
-    mov cx, 1 ; Num of bytes 
-    push ax
-    mov al, ' ' ; space character
-    mov [Message], al
-    pop ax
-    mov dx, offset Message
-    int 21h
-    jc write_error ; handle errors
-	mov ah, 40h
-	mov cx, 1 ; Num of bytes 
-	push ax
-	
-	mov al , [byte ptr level] ; put player score in msg
-	mov [Message] , al
-	add [Message] , '0'
-	mov dx, offset Message
-	pop ax
-	int 21h
-	jc write_error
 
-ret
-
-file_not_open:
-jmp exit
-
-write_error:
-    jmp exit
-	
-endp WriteToFile
 proc CloseFile
 ; Close file
 mov ah,3Eh
@@ -131,7 +76,7 @@ endp CloseFile
 ;mov cx , 1
 ;;mov dx , 2
 ;int 21h
-;cmp ax, [word ptr level] 
+;cmp ax, [word ptr level_fst] 
 ;jnge bye
 ;checkScore:
 ;mov ah, 3Fh
@@ -139,7 +84,7 @@ endp CloseFile
 ;mov cx , 1
 ;;mov dx , 0
 ;int 21h
-;cmp ax , [word ptr Player_Score]
+;cmp ax , [word ptr Player_Score_fst]
 ;jge bye
 
 ;call WriteToFile
@@ -147,48 +92,65 @@ endp CloseFile
 ;ret
 ;ENDP MaxScore
 
-proc set_cursor
+
+	proc set_cursor_Pfst
+	xor dx , DX
 MOV AH, 02h
     MOV BH, 0
-    MOV DH, 1 ; Adjust row for the score display
-    MOV DL, 1 ; Adjust column for the score display
+    MOV DH, 2 ; Adjust row for the score display
+    MOV DL, 10 ; Adjust column for the score display
     INT 10h
 	RET
-	ENDP set_cursor
-PROC Score
+	ENDP set_cursor_Pfst
+PROC Score_fst
 
 	
     mov ah, 09h  ; Display character function
 	mov bh, 0    ; Page number
 	mov cx, 1    ; Number of times to display character
 	ADD AL, '0'        ; Convert to ASCII
-	mov al, [byte ptr Player_Score]  ; display level
+	mov al, [byte ptr Player_Score_fst]  ; display level_fst
 	
-    mov bl, [byte ptr level]    ; Attribute (text color)
+    mov bl, [byte ptr level_fst]    ; Attribute (text color)
     int 10h
-    MOV AH, 02h
+  
+	ret
+	
+ENDP Score_fst
+
+	
+	proc set_cursor_PScnd
+MOV AH, 02h
     MOV BH, 0
     MOV DH, 1 ; Adjust row for the score display
-    MOV DL, 1 ; Adjust column for the score display
+    MOV DL, 188 ; Adjust column for the score display
     INT 10h
-	
-    
-    MOV AH, 02h
-    MOV BH, 0
-    MOV DH, 1 ; Adjust row for the score displayx
-    MOV DL, 20 ; Adjust column for the score display y
-	int 10h
-	
-ENDP Score
+	RET
+	ENDP set_cursor_PScnd
+PROC Score_Scnd
 
+	
+    mov ah, 09h  ; Display character function
+	mov bh, 0    ; Page number
+	mov cx, 1    ; Number of times to display character
+	ADD AL, '0'        ; Convert to ASCII
+	mov al, [byte ptr Player_Score_Scnd]  ; display level_fst
+	
+    mov bl, [byte ptr level_Scnd]    ; Attribute (text color)
+    int 10h
+    
+	
+	ret
+ENDP Score_Scnd
   PROC moves
 
-    MOV AH, 01h       ; Function 01h - Check for Key Press
-    INT 16h
+    mov ah , 11h
+	int 16h
     JZ exit_moves     ; Jump if ZF is set (no key pressed)
 
     MOV AH, 00h       ; Function 00h - Read Key Stroke
     INT 16h
+	; ah is for extended like arrow keys
 	
     ; Check if AH contains 'W' (ASCII value 87)
     CMP AL, 'w'
@@ -204,20 +166,20 @@ ENDP Score
     CMP AL, 's'
     Je s_helper
 	
-	
-	CMP AL, 'u' ; arrow up key
+	CMP Ah, 48h ; arrow up key 
 	je u_helper
 
-    CMP AL, 'k' ; arrow left key
+    CMP Ah, 4Dh ; arrow left key
     je k_helper
     
-    CMP AL, 'h' ; arrow right key      
+    CMP Ah, 4Bh ; arrow right key      
     je h_helper
     
-    CMP AL, 'j'     ; arrow down key  
+    CMP Ah, 50h    ; arrow down key  
     Je j_helper
 	
 exit_moves:
+
 
     RET
 
@@ -249,47 +211,60 @@ mov [PressFlag1] , 1
 ret
 
 Proc LastPressed
+cmp [PressFlag1],0
+jne next
+
+next:
 CALL moves
 cmp [PressFlag2],1
 JNE temp
-SUB [FstY],5  
+mov cx , [speed]
+SUB [FstY],cx  
 temp:
 
 cmp [PressFlag2] , 2
 jne temp1
-add [FstX],5  
+mov cx , [speed]
+add [FstX],cx  
 temp1:
 
 cmp [PressFlag2] , 3
 jne temp2
-sub [FstX],5  
+mov cx , [speed]
+sub [FstX],cx  
 temp2:
 
 cmp [PressFlag2] , 4
 jne temp3
-add [FstY],5  
+mov cx , [speed]
+add [FstY],cx  
 temp3:
 
 
 cmp [PressFlag1] , 1
 JNE temp4
-SUB [Y],5  
+mov cx , [speed]
+SUB [Y],cx 
 temp4:
 
 cmp [PressFlag1] , 2
 jne temp5
-add [X],5  
+mov cx , [speed]
+add [X],cx  
 temp5:
 
 cmp [PressFlag1] , 3
 jne temp6
-SUB [X],5  
+mov cx , [speed]
+SUB [X],cx  
 temp6:
 
 cmp [PressFlag1] , 4
 jne temp7
-add [Y],5  
+mov cx , [speed]
+add [Y],cx  
 temp7:
+
 ret
 endp LastPressed
 
@@ -298,6 +273,7 @@ Proc Keyboard
 
 	call LastPressed
 	call draw
+	ret
 	endp Keyboard
 
 
@@ -384,8 +360,6 @@ MOV AX, 0C07h     ; Function 0Ch, Set Pixel Color
             JNE draw_row_loop1
 
 
-
-	
 	
 mov  si, [FstBody]      ; 5 (best to keep this an odd number: 3, 5, 7, ...
 shr  si, 1                ; 2
@@ -406,7 +380,7 @@ mov  bx, [FstYapple]
 lea  ax, [bx + si]        ; FstYapple + 2
 mov  [FstCenterApple_FstY], ax
 
-
+call check_Collision_player_Player1
 	
     MOV AX, 0C07h     ; Function 0Ch, Set Pixel Color
     MOV BH, 0         ; Page number (usually 0 in mode 13h)
@@ -516,7 +490,8 @@ mov  [CenterApple_X], ax
 mov  bx, [Yapple]
 lea  ax, [bx + si]        ; Yapple + 2
 mov  [CenterApple_Y], ax
-call check_collision
+call check_Collision
+
 
 
 		
@@ -524,6 +499,103 @@ call check_collision
 	
     RET
 ENDP draw
+proc OpenFile1
+; Open file
+mov ah, 3Dh
+xor al, al
+mov dx, offset filename_screen2
+int 21h
+jc openerror1
+mov [filehandle], ax
+ret
+openerror1 :
+mov dx, offset ErrorMsg
+mov ah, 9h
+int 21h
+ret
+endp OpenFile1
+proc ReadHeader1
+; Read BMP file header, 54 bytes
+mov ah,3fh
+mov bx, [filehandle]
+mov cx,54
+mov dx,offset Header
+int 21h
+ret
+endp ReadHeader1
+proc ReadPalette1
+; Read BMP file color palette, 256 colors * 4 bytes (400h)
+mov ah,3fh
+mov cx,400h
+mov dx,offset Palette
+int 21h
+ret
+endp ReadPalette1
+proc CopyPal1
+; Copy the colors palette to the video memory
+; The number of the first color should be sent to port 3C8h
+; The palette is sent to port 3C9h
+mov si,offset Palette
+mov cx,256
+mov dx,3C8h
+mov al,0
+; Copy starting color to port 3C8h
+out dx,al
+; Copy palette itself to port 3C9h
+inc dx
+PalLoop1:
+; Note: Colors in a BMP file are saved as BGR values rather than RGB .
+mov al,[si+2] ; Get red value .
+shr al,2 ; Max. is 255, but video palette maximal
+; value is 63. Therefore dividing by 4.
+out dx,al ; Send it .
+mov al,[si+1] ; Get green value .
+shr al,2
+out dx,al ; Send it .
+mov al,[si] ; Get blue value .
+shr al,2
+out dx,al ; Send it .
+add si,4 ; Point to next color .
+; (There is a null chr. after every color.)
+loop PalLoop1
+ret
+endp CopyPal1
+proc CopyBitmap1
+; BMP graphics are saved upside-down .
+; Read the graphic line by line (200 lines in VGA format),
+; displaying the lines from bottom to top.
+mov ax, 0A000h
+mov es, ax
+mov cx,200
+PrintBMPLoop1 :
+push cx
+; di = cx*320, point to the correct screen line
+mov di,cx
+shl cx,6
+shl di,8
+add di,cx
+; Read one line
+mov ah,3fh
+mov cx,320
+mov dx,offset ScrLine
+int 21h
+; Copy one line into video memory
+cld ; Clear direction flag, for movsb
+mov cx,320
+mov si,offset ScrLine
+rep movsb ; Copy line to the screen
+ ;rep movsb is same as the following code :
+ ;mov es:di, ds:si
+ ;inc si
+ ;inc di
+ ;dec cx
+ ;loop until cx=0
+pop cx
+loop PrintBMPLoop1
+ret
+endp CopyBitmap1
+
+
 
 
 
@@ -531,12 +603,12 @@ proc OpenFile
 ; Open file
 mov ah, 3Dh
 xor al, al
-mov dx, offset filename_screen
+mov dx, offset filename_screen1
 int 21h
-jc openerror1
+jc openerror2
 mov [filehandle], ax
 ret
-openerror1 :
+openerror2 :
 mov dx, offset ErrorMsg
 mov ah, 9h
 int 21h
@@ -625,45 +697,50 @@ endp CopyBitmap
 
 
 
+
+
+
  PROC check_collision
-  mov  ax, [FstCenterSquare_FstX]
-  sub  ax, [FstCenterApple_FstX]
+  mov  ax, [CenterSquare_X]
+  sub  ax, [CenterApple_X]
   jns  DeltaFstX
   neg  ax
 DeltaFstX:
-  cmp  ax, [FstBody]
+  cmp  ax, [SnakeBody]
   jnb  NoCollision
 
-  mov  ax, [FstCenterSquare_FstY]
-  sub  ax, [FstCenterApple_FstY]
+  mov  ax, [CenterSquare_Y]
+  sub  ax, [CenterApple_Y]
   jns  DeltaFstY
   neg  ax
 DeltaFstY:
-  cmp  ax, [FstBody]
+  cmp  ax, [SnakeBody]
   jnb  NoCollision
 Collision:
 	
-	Inc [Player_Score]
-	cmp [Player_Score], 58 ; 58 is '9' in ascii
-	jne score_Show
+	Inc [Player_Score_fst]
+	cmp [Player_Score_fst], 58 ; 58 is '9' in ascii
+	jne score_Show1
 	
 	
-	inc [level]
-	mov [Player_Score], 49 ;  set to 1
-	mov cx, [word ptr level]
+	inc [level_fst]
+	mov [Player_Score_fst], 49 ;  set to 1
+	mov cx, [word ptr level_fst]
 		
 		INC [Speed]
 		
 		
 	
 	
-	score_Show:
+	score_Show1:
 	; change apple postion
-    CALL rnd_y
+	CALL rnd_y
     CALL rnd_x
+    
 	; show score
-	call set_cursor
-	call Score
+	xor dx , dx
+	CALL set_cursor_Pfst
+	CALL Score_fst
 	
 	
 	
@@ -676,6 +753,57 @@ call check_bounds ; checks for out of bounds
     RET
 	
 ENDP check_collision ; hitbox code
+
+ PROC check_Collision_player_Player1
+  mov  ax, [FstCenterSquare_FstX]
+  sub  ax, [FstCenterApple_FstX]
+  jns  DeltaFstX_player1
+  neg  ax
+DeltaFstX_player1:
+  cmp  ax, [FstBody]
+  jnb  NoCollision_player_player1
+
+  mov  ax, [FstCenterSquare_FstY]
+  sub  ax, [FstCenterApple_FstY]
+  jns  DeltaFstY_player1
+  neg  ax
+DeltaFstY_player1:
+  cmp  ax, [FstBody]
+  jnb  NoCollision_player_player1
+Collision_player:
+	
+	Inc [Player_Score_Scnd]
+	cmp [Player_Score_Scnd], 58 ; 58 is '9' in ascii
+	jne score_Show
+	
+	
+	inc [level_Scnd]
+	mov [Player_Score_Scnd], 49 ;  set to 1
+	mov cx, [word ptr level_Scnd]
+		
+	INC [Speed]
+		
+		
+	
+	
+	score_Show:
+	; change apple postion
+    
+	CALL rnd_y_player1
+    CALL rnd_x_player1
+	
+	call set_cursor_PScnd
+	call Score_Scnd
+	
+	
+	
+   
+
+NoCollision_player_player1:
+call check_bounds ; checks for out of bounds
+    RET
+	
+ENDP check_Collision_player_Player1 ; hitbox code
 ;Randoms 
 PROC rand2num1toValue_FstY
     push dx
@@ -685,7 +813,7 @@ PROC rand2num1toValue_FstY
 	
 	
 	
-    mov bx, 25          ;     between 1 and border height / 5
+    mov bx, 14          ;     between 1 and border height / 5
     div bx
     inc dx             ; DFstX = modulo from division
 	                 
@@ -693,13 +821,13 @@ PROC rand2num1toValue_FstY
 	mov al ,5 ; make sure it stays on the y axis of 5 or current value of body and apple
 	mul dx
 	mov [Random_y],ax 
-	ADD [Random_y], 50 ; 50 is border
-	
 	
     pop bx
     pop dx
     RET
 	ENDP rand2num1toValue_FstY
+	
+	
 	
 	PROC rand2num1toValue_FstX
 	push dx
@@ -708,7 +836,7 @@ PROC rand2num1toValue_FstY
     xor dx, dx          ; Compute randval(DFstX) mod 10 to get num
 	
 	xor dx, dx          ; Compute randval(DFstX) mod 10 to get num
-    mov bx, 201          ; Set the range (240 - 40 + 1 = 201)
+    mov bx, 90          ; Set the range 
     div bx              ; Divide by the range
 	inc dx
     mov [Random_x], dx
@@ -717,6 +845,8 @@ PROC rand2num1toValue_FstY
     pop dx
     ret
 	ENDP rand2num1toValue_FstX
+	
+	
 	; Set LCG PRNG seed to system timer ticks
 ; Inputs:   AFstX = seed
 ; Modifies: AFstX 
@@ -747,20 +877,48 @@ Proc rnd_x
     push bx
 	
 	MOV bx , [Random_x]
-	add bx , 40
-    mov [Fstxapple], bx
+	add bx , 25
+    mov [Xapple], bx
 	pop bx
     ret
 ENDP rnd_x
+Proc rnd_x_player1
+		
+	call srandsystime   ; Seed PRNG with system time, call once only 
+    call rand           ; Get a random number in AFstX
+    call rand2num1toValue_FstX
+    push bx
+	
+	MOV bx , [Random_x]
+	add bx , 175
+    mov [Fstxapple], bx
+	pop bx
+    ret
+ENDP rnd_x_player1
+
+Proc rnd_y_player1
+	call srandsystime   ; Seed PRNG with system time, call once only 
+    call rand           ; Get a random number in AFstX
+    call rand2num1toValue_FstY
+	push bx
+	
+	MOV bx , [Random_y]
+	add bx , 49
+    mov [FstYapple], bx
+	pop bx
+    RET
+ENDP rnd_y_player1
 
 Proc rnd_y
 	call srandsystime   ; Seed PRNG with system time, call once only 
     call rand           ; Get a random number in AFstX
     call rand2num1toValue_FstY
-
+	push bx
 	
 	MOV bx , [Random_y]
-    mov [Fstyapple], bx
+	add bx , 49
+    mov [yapple], bx
+	pop bx
     RET
 ENDP rnd_y
 
@@ -768,33 +926,63 @@ ENDP rnd_y
 PROC check_bounds
     ; Check if the snake's head is out of bounds
     mov ax, [FstX]
-    cmp ax, 40
-    jl out_of_bounds   ; Jump if FstX coordinate is less than 40
+    cmp ax, 174
+    jl out_of_bounds1   ; Jump if FstX coordinate is less than 40
 
     mov ax, [FstX]
-    cmp ax, 280
-    jg out_of_bounds   ; Jump if FstX coordinate is greater than 240
+    cmp ax, 274
+    jg out_of_bounds1   ; Jump if FstX coordinate is greater than 240
 
     mov ax, [FstY]
-    cmp ax, 50
-    jl out_of_bounds   ; Jump if FstY coordinate is less than 50
+    cmp ax, 24
+    jl out_of_bounds1   ; Jump if FstY coordinate is less than 50
 
     mov ax, [FstY]
-    cmp ax, 200
-    jg out_of_bounds   ; Jump if FstY coordinate is greater than 150
+    cmp ax, 124
+    jg out_of_bounds1   ; Jump if FstY coordinate is greater than 150
+	
+	
+	mov ax, [X]
+    cmp ax, 24
+    jl out_of_bounds2   ; Jump if FstX coordinate is less than 40
 
-    ret
+    mov ax, [X]
+    cmp ax, 124
+    jg out_of_bounds2   ; Jump if FstX coordinate is greater than 240
 
-out_of_bounds:
-call OpenFile_Score
-call WriteToFile
-call CloseFile
+    mov ax, [Y]
+    cmp ax, 24
+    jl out_of_bounds2   ; Jump if FstY coordinate is less than 50
 
-call OpenFile
-call ReadHeader
-call ReadPalette
-call CopyPal
-call CopyBitmap
+    mov ax, [Y]
+    cmp ax, 124
+    jg out_of_bounds2   ; Jump if FstY coordinate is greater than 150
+	ret
+	out_of_bounds1:
+		mov [speed],0
+		mov [X] , 75
+		mov [Y] , 50
+		mov [screenFlag],1
+		call OpenFile
+		call ReadHeader
+		call ReadPalette
+		call CopyPal
+		call CopyBitmap
+	jmp check
+	out_of_bounds2:
+		mov [speed],0
+		mov [FstX] , 250
+		mov [FstY] , 50
+		mov [screenFlag],2
+		call OpenFile1
+		call ReadHeader1
+		call ReadPalette1
+		call CopyPal1
+		call CopyBitmap1
+	
+   
+
+
 check:
 	MOV AH, 01h       ; Function 01h - Check for Key Press
     INT 16h
@@ -803,8 +991,12 @@ check:
     MOV AH, 00h       ; Function 00h - Read Key Stroke
     INT 16h
 	cmp al , 'p'
-    jne out_of_bounds
+	jne check
+	
 
+
+
+Reset:
 call reset_game
     RET
 ENDP check_bounds	
@@ -836,8 +1028,6 @@ PROC game_logic
 
 ENDP game_logic
 
-
-
 start:
     MOV ax, @data
     MOV DS, ax
@@ -859,13 +1049,22 @@ start:
 	  proc reset_game
         ; FstYour reset code goes here
         ; reset game and then rerun it
-		mov [FstX], 100
-		mov [FstY],100
-		mov [Fstxapple],80
+		
+		mov [FstX], 200
+		mov [FstY],70
+		mov [X] , 100
+		mov [Y] , 70
+		mov [Xapple],80
+		mov [yapple], 80
+		mov [Fstxapple],200
 		mov [Fstyapple],80
 		mov [Speed] , 5
-		mov [level] , 1
-		mov [Player_Score] , 48
+		mov [level_fst] , 1
+		mov [Player_Score_Scnd],48
+		mov [Player_Score_fst] , 48
+		mov [PressFlag1],0
+		mov [PressFlag2],0
+		
 		jmp start
 		; reset color pallet
 		

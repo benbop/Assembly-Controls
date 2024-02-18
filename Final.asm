@@ -753,7 +753,7 @@ proc OpenFile
 ; Open file
 mov ah, 3Dh
 xor al, al
-mov dx, offset filename_screen1
+mov dx, offset filename_screen_S
 int 21h
 jc openerror2
 mov [filehandle], ax
@@ -869,7 +869,7 @@ DeltaFstY:
 Collision:
 	
 	Inc [Player_Score_fst]
-	cmp [Player_Score_fst], 58 ; 58 is '9' in ascii
+	cmp [Player_Score_fst], 53 ; 58 is '9' in ascii
 	jne score_Show1
 	
 	

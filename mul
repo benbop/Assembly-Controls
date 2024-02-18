@@ -3,7 +3,8 @@ MODEL small
 STACK 100h
 DATASEG
 ; --------------------------
-
+filename_OutOfTimep1 db 'TimeP1.bmp',0
+filename_OutOfTimep2 db 'TimeP2.bmp',0
 filename_screen1 db 'Player1.bmp',0
 filename_screen2 db 'Player2.bmp',0
 filehandle dw ?
@@ -63,14 +64,55 @@ Timer_ db 00 ; hold crr time
 ; --------------------------
 CODESEG
 
-proc Timer ; wait 60 seconds before neding the game
+proc Timer ; wait 60 seconds before eneding the game
 	mov ah , 2ch
 	int 21h
 	cmp [Timer_], dh
 	je Time_passed
 	ret
 	Time_passed:
-	jmp exit
+	mov bh , [Player_Score_fst]
+	cmp [Player_Score_Scnd],bh
+	jg Scnd_Wins
+	Fst_Wins:
+	call OpenFile_OutOfTimeP1
+		call ReadHeader
+		call ReadPalette
+		call CopyPal
+		call CopyBitmap
+		loopFst:
+		mov ah , 11h
+		int 16h
+		JZ loopFst
+		
+		MOV AH, 00h       ; Function 00h - Read Key Stroke
+		INT 16h
+		
+		cmp al , 'p'
+		jne loopFst
+		call reset_game
+		exit_temp1:
+		ret
+	Scnd_Wins : 
+	call OpenFile_OutOfTimeP2
+		call ReadHeader
+		call ReadPalette
+		call CopyPal
+		call CopyBitmap
+		loopScnd:
+		mov ah , 11h
+		int 16h
+		JZ loopScnd
+		
+		MOV AH, 00h       ; Function 00h - Read Key Stroke
+		INT 16h
+		
+		cmp al , 'p'
+		jne loopScnd
+		call reset_game
+		exit_temp2:
+		ret
+	
 ENDP Timer
 
 proc CloseFile
@@ -488,6 +530,38 @@ call check_Collision
 	
     RET
 ENDP draw
+proc OpenFile_OutOfTimeP1
+; Open file
+mov ah, 3Dh
+xor al, al
+mov dx, offset filename_OutOfTimep1
+int 21h
+jc openerror_notimep1
+mov [filehandle], ax
+ret
+openerror_notimep1 :
+mov dx, offset ErrorMsg
+mov ah, 9h
+int 21h
+ret
+endp OpenFile_OutOfTimeP1
+
+proc OpenFile_OutOfTimeP2
+; Open file
+mov ah, 3Dh
+xor al, al
+mov dx, offset filename_OutOfTimep2
+int 21h
+jc openerror_notimep2
+mov [filehandle], ax
+ret
+openerror_notimep2 :
+mov dx, offset ErrorMsg
+mov ah, 9h
+int 21h
+ret
+endp OpenFile_OutOfTimeP2
+
 proc OpenFile1
 ; Open file
 mov ah, 3Dh
@@ -1025,7 +1099,6 @@ start:
 	mov ah , 2ch ; reposnsible for time setting of the game
 	int 21h
 	mov [Timer_],DH
-	sub [Timer_],1
 	;
 	
     MOV ax, 13h

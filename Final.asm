@@ -112,7 +112,7 @@ screenFlag db 0
 
 Timer_ db 00 ; hold crr time
 StartScreen db 'Start.bmp',0
-instructions db ''
+instructions db 'Tut.bmp',0
 
 CODESEG
 
@@ -125,6 +125,22 @@ mov ah, 3Dh
 xor al, al
 mov dx, offset StartScreen
 int 21h
+jc openerrortut
+mov [filehandle], ax
+ret
+openerrortut :
+mov dx, offset ErrorMsg
+mov ah, 9h
+int 21h
+ret
+endp OpenFile_start
+
+proc OpenFile_Tut
+; Open file
+mov ah, 3Dh
+xor al, al
+mov dx, offset instructions
+int 21h
 jc openerror1
 mov [filehandle], ax
 ret
@@ -133,7 +149,8 @@ mov dx, offset ErrorMsg
 mov ah, 9h
 int 21h
 ret
-endp OpenFile_start
+endp OpenFile_Tut
+
 proc Timer ; wait 60 seconds before eneding the game
 	mov ah , 2ch
 	int 21h
@@ -1934,7 +1951,21 @@ start_game:
 	mov [Timer_],DH
 	sub [Timer_],1
 	;
-	
+	call OpenFile_Tut
+	call ReadHeader1
+	call ReadPalette1
+	call CopyPal1
+	call CopyBitmap1
+	Tut:
+
+		MOV AH, 00h       ; Function 00h - Read Key Stroke
+		INT 16h
+		
+		cmp al , 'c'
+		je After_Tut
+		jmp Tut
+		
+		After_Tut:
     MOV ax, 13h
     INT 10h ; Set video mode 13h (320x200 pixels, 256 colors)
 	

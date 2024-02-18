@@ -58,9 +58,20 @@ flagforscore db 0
 
 screenFlag db 0
 
+
+Timer_ db 00 ; hold crr time
 ; --------------------------
 CODESEG
 
+proc Timer ; wait 60 seconds before neding the game
+	mov ah , 2ch
+	int 21h
+	cmp [Timer_], dh
+	je Time_passed
+	ret
+	Time_passed:
+	jmp exit
+ENDP Timer
 
 proc CloseFile
 ; Close file
@@ -69,28 +80,6 @@ mov bx, [filehandle_score]
 int 21h
 ret
 endp CloseFile
-;unstble
-;proc MaxScore
-;mov ah ,3Fh
-;mov bx , 0
-;mov cx , 1
-;;mov dx , 2
-;int 21h
-;cmp ax, [word ptr level_fst] 
-;jnge bye
-;checkScore:
-;mov ah, 3Fh
-;mov bx ,0
-;mov cx , 1
-;;mov dx , 0
-;int 21h
-;cmp ax , [word ptr Player_Score_fst]
-;jge bye
-
-;call WriteToFile
-;bye:
-;ret
-;ENDP MaxScore
 
 
 	proc set_cursor_Pfst
@@ -103,7 +92,7 @@ MOV AH, 02h
 	RET
 	ENDP set_cursor_Pfst
 PROC Score_fst
-
+	
 	
     mov ah, 09h  ; Display character function
 	mov bh, 0    ; Page number
@@ -1005,17 +994,18 @@ ENDP check_bounds
 
 
 PROC game_logic
-
+	push dx ; for timer
     CHECK_TIME:                      ;time checking loop
         MOV AH, 2Ch                  ;get the system time
         INT 21h                      ;is the current time equal to the previous one(TIME_AUX)?
         CMP DL, [TIME_AUX]           ;is the current time equal to the previous one(TIME_AUX)?
 		
         JE CHECK_TIME              ; if it is the same, skip updating the game state
-
+		
         ; If it reaches this point, it's because the time has passed
         MOV [TIME_AUX], DL           ;update time
-		
+		pop dx; for timer
+		call Timer ; check timer
 		
 		CALL Keyboard
 		
@@ -1031,7 +1021,12 @@ ENDP game_logic
 start:
     MOV ax, @data
     MOV DS, ax
-
+	
+	mov ah , 2ch ; reposnsible for time setting of the game
+	int 21h
+	mov [Timer_],DH
+	sub [Timer_],1
+	;
 	
     MOV ax, 13h
     INT 10h ; Set video mode 13h (320x200 pixels, 256 colors)
@@ -1039,6 +1034,7 @@ start:
 	
     game_loop:
 	 CALL game_logic
+	 
 	 
         ; Check for key press to reset the game
         
@@ -1049,7 +1045,7 @@ start:
 	  proc reset_game
         ; FstYour reset code goes here
         ; reset game and then rerun it
-		
+		mov [Timer_],0
 		mov [FstX], 200
 		mov [FstY],70
 		mov [X] , 100

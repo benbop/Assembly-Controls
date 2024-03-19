@@ -794,6 +794,22 @@ mov ah, 3Dh
 xor al, al
 mov dx, offset filename_screen_S
 int 21h
+jc openerror212
+mov [filehandle], ax
+ret
+openerror212 :
+mov dx, offset ErrorMsg
+mov ah, 9h
+int 21h
+ret
+endp OpenFile
+
+proc OpenFile_losePlayer1
+; Open file
+mov ah, 3Dh
+xor al, al
+mov dx, offset filename_screen1
+int 21h
 jc openerror2
 mov [filehandle], ax
 ret
@@ -802,7 +818,7 @@ mov dx, offset ErrorMsg
 mov ah, 9h
 int 21h
 ret
-endp OpenFile
+endp OpenFile_losePlayer1
 proc OpenFile_YouLose
 ; Open file
 mov ah, 3Dh
@@ -1167,7 +1183,7 @@ PROC check_bounds
 		mov [X] , 75
 		mov [Y] , 50
 		mov [screenFlag],1
-		call OpenFile
+		call OpenFile_losePlayer1
 		call ReadHeader
 		call ReadPalette
 		call CopyPal

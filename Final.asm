@@ -1,3 +1,4 @@
+jumps
 IDEAL
 MODEL small
 STACK 100h
@@ -5,7 +6,9 @@ DATASEG
 ; --------------------------
 ;Single player
 Player_Buffer_S db 21 dup(?),0
-filename_screen_S db 'Again.bmp',0
+filename_screen_S db 'Start.bmp',0
+filename_screen_Ss db 'Again.bmp',0
+
 filehandle_S dw ?
 Header_S db 54 dup (0)
 Palette_S db 256*4 dup (0)
@@ -114,11 +117,47 @@ Timer_ db 00 ; hold crr time
 StartScreen db 'Start.bmp',0
 instructions db 'Tut.bmp',0
 
+;notes
+note_C  dw 261
+note_D  dw 294
+note_E  dw 329
+note_F  dw 349
+note_G  dw 392
+note_A  dw 440
+note_B  dw 494
+
+easteregg db 1
 CODESEG
 
 ; --------------------------    
 ; Your code here
 ; --------------------------
+delayms equ [bp+4]
+proc delay 
+		push bp
+		mov bp, sp
+		mov ax , delayms
+		mov di, 1000    
+		mul di          ; DX:AX=CX*AX (in AX duration of the note * multi)
+		
+		
+		mov cx, dx      ; into register CX the high byte
+		mov dx, ax      ; into 
+		mov ax, 8600h
+		int 15h         ; when ah=86, CX:DX - number of microseconds to wait (only accurate to 977 us)
+
+		in al,61h       
+        	and al,11111100b
+        	out 61h,al
+
+		mov cx, 0		;pause between notes
+		mov dx, 10000	
+		mov ax, 8600h
+		int 15h
+		    
+		pop bp
+		ret 2             
+endp delay
 proc OpenFile_start
 ; Open file
 mov ah, 3Dh
@@ -764,6 +803,21 @@ mov ah, 9h
 int 21h
 ret
 endp OpenFile
+proc OpenFile_YouLose
+; Open file
+mov ah, 3Dh
+xor al, al
+mov dx, offset filename_screen_Ss
+int 21h
+jc openerror21
+mov [filehandle], ax
+ret
+openerror21 :
+mov dx, offset ErrorMsg
+mov ah, 9h
+int 21h
+ret
+endp OpenFile_YouLose
 proc ReadHeader
 ; Read BMP file header, 54 bytes
 mov ah,3fh
@@ -1826,7 +1880,7 @@ CALL CloseFile
 
 
 ;end game screen
-call OpenFile
+call OpenFile_YouLose
 call ReadHeader
 call ReadPalette
 call CopyPal
@@ -1849,8 +1903,10 @@ jmp out_of_bounds_S
 ENDP check_bounds_S	
 	
  proc reset_game_S
+
         ; Your reset code goes here
         ; reset game and then rerun it
+		
 		mov [X_S], 100
 		mov [Y_S],100
 		mov [Xapple_S],80
@@ -1885,16 +1941,328 @@ PROC game_logic_S
         RET
 
 ENDP game_logic_S
+
+freq equ [bp+4]
+proc NoteItself
+    push bp
+    mov bp, sp
+	
+    
+
+    ; Send the frequency to the speaker port
+    in al, 61h
+    or al, 00000011b
+    out 61h, al           ; Enable speaker
+
+    mov al, 0B6h
+    out 43h, al           ; Set the command byte for timer channel 2
+	
+	mov di, freq          ; Load the frequency value
+    mov dx, 12h           ; Load the high word of the divisor
+    mov ax, 2870h         ; Load the low word of the divisor
+    div di                ; Divide DX:AX by frequency to get the divisor
+
+    
+    out 42h, al           ; Send lower byte
+    mov al, ah
+    out 42h, al           ; Send upper byte
+	
+	
+	
+    pop bp
+    ret 2
+endp NoteItself
+
+proc jingle_start
+
+;jingle_bell
+cmp [easteregg] , 3
+je twinkle
+
+cmp [easteregg] , 2
+je happybirthday
+
+inc [easteregg]
+push [note_E]   ; E
+call NoteItself
+push 400        ; Duration
+call delay
+
+push [note_E]   ; E
+call NoteItself
+push 400        ; Duration
+call delay
+
+push [note_E]   ; E
+call NoteItself
+push 800        ; Duration (longer for the pause)
+call delay
+
+push [note_E]   ; E
+call NoteItself
+push 400        ; Duration
+call delay
+
+push [note_E]   ; E
+call NoteItself
+push 400        ; Duration
+call delay
+
+push [note_E]   ; E
+call NoteItself
+push 800        ; Duration (longer for the pause)
+call delay
+
+push [note_E]   ; E
+call NoteItself
+push 400        ; Duration
+call delay
+
+push [note_G]   ; G
+call NoteItself
+push 400        ; Duration
+call delay
+
+push [note_C]   ; C
+call NoteItself
+push 400        ; Duration
+call delay
+
+push [note_D]   ; D
+call NoteItself
+push 400        ; Duration
+call delay
+
+push [note_E]   ; E
+call NoteItself
+push 400        ; Duration
+call delay
+
+push [note_F]   ; F
+call NoteItself
+push 400        ; Duration
+call delay
+
+push [note_F]   ; F
+call NoteItself
+push 1000        ; Duration (longer for the pause)
+call delay
+
+push [note_F]   ; F
+call NoteItself
+push 400        ; Duration
+call delay
+
+push [note_F]   ; F
+call NoteItself
+push 400        ; Duration
+call delay
+
+push [note_F]   ; F
+call NoteItself
+push 400        ; Duration
+call delay
+
+push [note_E]   ; E
+call NoteItself
+push 400        ; Duration
+call delay
+
+push [note_E]   ; E
+call NoteItself
+push 400        ; Duration
+call delay
+
+push [note_E]   ; E
+call NoteItself
+push 400        ; Duration
+call delay
+
+push [note_E]   ; E
+call NoteItself
+push 400        ; Duration
+call delay
+
+push [note_D]   ; D
+call NoteItself
+push 400        ; Duration
+call delay
+
+push [note_D]   ; D
+call NoteItself
+push 400        ; Duration
+call delay
+
+push [note_E]   ; E
+call NoteItself
+push 400        ; Duration
+call delay
+
+push [note_D]   ; D
+call NoteItself
+push 800        ; Duration (longer for the pause)
+call delay
+jmp end_songs
+	happybirthday:
+	; Happy Birthday
+	inc [easteregg]
+push [note_C]
+call NoteItself
+push 300
+call delay
+
+push [note_C]
+call NoteItself
+push 300
+call delay
+
+push [note_D]
+call NoteItself
+push 600
+call delay
+
+push [note_C]
+call NoteItself
+push 600
+call delay
+
+push [note_F]
+call NoteItself
+push 600
+call delay
+
+push [note_E]
+call NoteItself
+push 1200
+call delay
+
+push [note_C]
+call NoteItself
+push 300
+call delay
+
+push [note_C]
+call NoteItself
+push 300
+call delay
+
+push [note_D]
+call NoteItself
+push 600
+call delay
+
+push [note_C]
+call NoteItself
+push 600
+call delay
+
+push [note_G]
+call NoteItself
+push 600
+call delay
+
+push [note_F]
+call NoteItself
+push 1200
+call delay
+jmp end_songs
+twinkle:
+; Twinkle, Twinkle, Little Star
+push [note_C]
+call NoteItself
+push 300
+call delay
+
+push [note_C]
+call NoteItself
+push 300
+call delay
+
+push [note_G]
+call NoteItself
+push 300
+call delay
+
+push [note_G]
+call NoteItself
+push 300
+call delay
+
+push [note_A]
+call NoteItself
+push 300
+call delay
+
+push [note_A]
+call NoteItself
+push 300
+call delay
+
+push [note_G]
+call NoteItself
+push 600
+call delay
+
+push [note_F]
+call NoteItself
+push 300
+call delay
+
+push [note_F]
+call NoteItself
+push 300
+call delay
+
+push [note_E]
+call NoteItself
+push 300
+call delay
+
+push [note_E]
+call NoteItself
+push 300
+call delay
+
+push [note_D]
+call NoteItself
+push 300
+call delay
+
+push [note_D]
+call NoteItself
+push 300
+call delay
+
+push [note_C]
+call NoteItself
+push 600
+call delay
+mov [easteregg], 1
+	end_songs:
+	in al,61h
+        		and al,11111100b
+        		out 61h,al 	;disable speaker
+				jmp start_game
+
+ret
+endp jingle_start
+
+	
 start_game:
     MOV ax, @data
     MOV DS, ax
+	
 	MOV AX, 13h
     INT 10h
+	
 	call OpenFile_start
 	call ReadHeader1
 	call ReadPalette1
 	call CopyPal1
 	call CopyBitmap1
+	
+	
+	
 	loopstart:
 
 		MOV AH, 00h       ; Function 00h - Read Key Stroke
@@ -1904,6 +2272,8 @@ start_game:
 		je Multiplier
 		cmp al , 's'
 		je Singplayer
+		cmp al , 'q'
+		je jingle_start
 		jmp loopstart
 		
 	Singplayer:	

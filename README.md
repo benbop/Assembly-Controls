@@ -4,7 +4,7 @@
 
 ### In the DOS-BOX cmd line:
 
-Tasm /zi Final.asm
-Tlink /v Final.obj
+Tasm /zi Final.asm \n
+Tlink /v Final.obj \n
 
 Final.exe
